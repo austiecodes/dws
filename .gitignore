@@ -95,3 +95,6 @@ go.work.sum
 # EE license key and public key
 license.txt
 public.txt
+
+# air
+tmp/
