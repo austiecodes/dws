@@ -12,5 +12,5 @@ func main() {
 	routes.SetupRoutes(r)
 
 	// 启动服务器
-	r.Run(":8080")
+	r.Run(":8989")
 }

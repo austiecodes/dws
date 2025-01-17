@@ -1,0 +1,6 @@
+[GPU]
+# nvml will be inited if true
+Enabled = True 
+
+
+

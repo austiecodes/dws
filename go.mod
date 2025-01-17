@@ -2,7 +2,10 @@ module github.com/austiecodes/dws
 
 go 1.23.3
 
-require github.com/gin-gonic/gin v1.10.0
+require (
+	github.com/NVIDIA/go-nvml v0.12.4-1
+	github.com/gin-gonic/gin v1.10.0
+)
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect
