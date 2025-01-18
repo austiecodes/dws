@@ -6,7 +6,7 @@ import (
 	"github.com/austiecodes/dws/models/types"
 	dtypes "github.com/docker/docker/api/types"
 
-	"github.com/austiecodes/dws/resources"
+	"github.com/austiecodes/dws/libs/resources"
 	"github.com/docker/docker/api/types/container"
 	"github.com/gin-gonic/gin"
 )

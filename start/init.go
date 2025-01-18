@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/austiecodes/dws/resources"
+	"github.com/NVIDIA/go-nvml/pkg/nvml"
+	"github.com/austiecodes/dws/libs/managers"
+	"github.com/austiecodes/dws/libs/resources"
 	"github.com/docker/docker/client"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -26,7 +28,6 @@ func initDockerClient() {
 }
 
 func initPG(configPath string) {
-
 	config, err := ParsePGConfig(configPath)
 	if err != nil {
 		panic(fmt.Errorf("failed to parse PostgreSQL config: %w", err))
@@ -65,4 +66,32 @@ func initPG(configPath string) {
 	if err := sqlDB.Ping(); err != nil {
 		panic(fmt.Errorf("failed to ping PostgreSQL: %w", err))
 	}
+}
+
+func initGPUManager() {
+	var errMsg string
+	if ret := nvml.Init(); ret != nvml.SUCCESS {
+		errMsg = nvml.ErrorString(ret)
+		panic(errMsg)
+	}
+
+	count, ret := nvml.DeviceGetCount()
+	if ret != nvml.SUCCESS {
+		errMsg = nvml.ErrorString(ret)
+		panic(errMsg)
+	}
+
+	resources.GPUManager = &managers.GPUManager{
+		Devices: make([]*nvml.Device, count),
+	}
+
+	for i := 0; i < count; i++ {
+		device, ret := nvml.DeviceGetHandleByIndex(i)
+		if ret != nvml.SUCCESS {
+			errMsg = nvml.ErrorString(ret)
+			panic(errMsg)
+		}
+		resources.GPUManager.Devices = append(resources.GPUManager.Devices, &device)
+	}
+
 }

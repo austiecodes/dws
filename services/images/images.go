@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/austiecodes/dws/resources"
+	"github.com/austiecodes/dws/libs/resources"
 	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
 )
