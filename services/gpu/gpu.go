@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NVStatus(c *gin.Context) ([]*types.GPUMetrics, error) {
+func GPUStatus(c *gin.Context) ([]*types.GPUMetrics, error) {
 	ret := make([]*types.GPUMetrics, 0)
 	err := nvml.Init()
 	if err != nvml.SUCCESS {

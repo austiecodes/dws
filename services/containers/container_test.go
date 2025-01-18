@@ -56,5 +56,3 @@ func TestCreateContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-
