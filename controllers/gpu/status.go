@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GPUMetricsController
+// GPUMetrics
 // returns the GPU metrics
-func GetStatusController(c *gin.Context) {
+func GetGPUStatus(c *gin.Context) {
 	data, err := service.NVStatus(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
