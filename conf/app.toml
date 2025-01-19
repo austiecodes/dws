@@ -1,2 +1,20 @@
+[App]
+Port = 8989
+
 [GPU]
 Enabled = true # NVML will be inited if true
+
+[Log]
+InfoLogFilePath = "logs/info.log"
+WarningLogFilePath = "logs/warning.log"
+ErrorLogFilePath = "logs/error.log"
+
+[PG]
+Host = "localhost"
+User = "yourusername"
+Password = "yourpassword"
+DBName = "yourdatabase"
+SSLMode = "disable"       # SSL mode disable in dev mode
+Max_open_conns = 10
+Max_idle_conns = 5
+Conn_max_lifetime = "5m"

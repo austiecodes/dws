@@ -7,17 +7,91 @@ import (
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/austiecodes/dws/libs/managers"
 	"github.com/austiecodes/dws/libs/resources"
+	"github.com/austiecodes/dws/routes"
 	"github.com/docker/docker/client"
+	ginzap "github.com/gin-contrib/zap"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var err error
 
-func MustInit() {
+func InitClients(appConfig AppConfig) {
+	initLogger(appConfig.Log)
 	// init docker client
 	initDockerClient()
-	initPG("conf/pg.toml")
+	// init db
+	initProgreSQL(appConfig.PG)
+	// init gpu manager
+	// initGPUManager()
+
+}
+
+func InitServer(appConfig AppConfig) {
+
+	r := gin.New()
+
+	r.Use(ginzap.Ginzap(resources.Logger, time.RFC3339, true))
+
+	r.Use(ginzap.RecoveryWithZap(resources.Logger, true))
+
+	routes.SetupRoutes(r)
+	port := ":" + fmt.Sprintf("%d", appConfig.App.Port)
+	r.Run(port)
+}
+
+func initLogger(config AppConfigLog) {
+	infoLogger := &lumberjack.Logger{
+		Filename:   config.InfoLogFilePath,
+		MaxSize:    100, // MB
+		MaxBackups: 2,
+		MaxAge:     28, // days
+		Compress:   true,
+	}
+
+	warnLogger := &lumberjack.Logger{
+		Filename:   config.InfoLogFilePath,
+		MaxSize:    100,
+		MaxBackups: 3,
+		MaxAge:     28,
+		Compress:   true,
+	}
+
+	errorLogger := &lumberjack.Logger{
+		Filename:   config.ErrorLogFilePath,
+		MaxSize:    100,
+		MaxBackups: 3,
+		MaxAge:     28,
+		Compress:   true,
+	}
+
+	infoSyncer := zapcore.AddSync(infoLogger)
+	warnSyncer := zapcore.AddSync(warnLogger)
+	errorSyncer := zapcore.AddSync(errorLogger)
+
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	encoder := zapcore.NewJSONEncoder(encoderConfig)
+
+	infoCore := zapcore.NewCore(encoder, infoSyncer, zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+		return level == zapcore.InfoLevel
+	}))
+
+	warnCore := zapcore.NewCore(encoder, warnSyncer, zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+		return level == zapcore.WarnLevel
+	}))
+
+	errorCore := zapcore.NewCore(encoder, errorSyncer, zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+		return level >= zapcore.ErrorLevel
+	}))
+
+	core := zapcore.NewTee(infoCore, warnCore, errorCore)
+	resources.Logger = zap.New(core, zap.AddCaller())
+	defer resources.Logger.Sync()
 }
 
 func initDockerClient() {
@@ -27,12 +101,7 @@ func initDockerClient() {
 	}
 }
 
-func initPG(configPath string) {
-	config, err := ParsePGConfig(configPath)
-	if err != nil {
-		panic(fmt.Errorf("failed to parse PostgreSQL config: %w", err))
-	}
-
+func initProgreSQL(config AppConfigPG) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=%s",
 		config.Host,
 		config.User,

@@ -1,19 +1,24 @@
 package main
 
 import (
-	"github.com/austiecodes/dws/routes"
+	"log"
+
+	"github.com/BurntSushi/toml"
 	"github.com/austiecodes/dws/start"
-	"github.com/gin-gonic/gin"
+	// 导入 ginzap
 )
 
 func main() {
 	// TODO: add config parser here
 	// the app init accroding to app.toml
 	// bootstrap
-	start.MustInit()
+	appConfigFilePath := "conf/app.toml"
+	var appConfig start.AppConfig
+	if _, err := toml.DecodeFile(appConfigFilePath, &appConfig); err != nil {
+		log.Fatalf("Error parsing config file: %v", err)
+	}
 
-	// init http server
-	r := gin.Default()
-	routes.SetupRoutes(r)
-	r.Run(":8989")
+	start.InitClients(appConfig)
+	start.InitServer(appConfig)
+
 }

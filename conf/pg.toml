@@ -1,9 +1,0 @@
-[PG]
-host = "localhost"
-user = "yourusername"
-password = "yourpassword"
-dbname = "yourdatabase"
-sslmode = "disable"       # SSL mode disable in dev mode
-max_open_conns = 10
-max_idle_conns = 5
-conn_max_lifetime = "5m"
