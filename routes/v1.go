@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"github.com/austiecodes/dws/controllers/auth"
 	"github.com/austiecodes/dws/controllers/containers"
 	"github.com/austiecodes/dws/controllers/gpu"
 	"github.com/austiecodes/dws/controllers/images"
@@ -32,9 +33,7 @@ func setupAuthRouters(r *gin.RouterGroup) {
 	// TODO: Implement auth login using uuid and other fileds
 	authRouters := r.Group("/auth")
 	{
-		authRouters.POST("/login", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"message": "login"})
-		})
+		authRouters.POST("/login", auth.Login)
 	}
 }
 
