@@ -13,7 +13,10 @@ import (
 
 func ListContainers(c *gin.Context, options container.ListOptions) ([]dtypes.Container, error) {
 	containers, err := resources.DockerClient.ContainerList(c, options)
-	return containers, err
+	if err != nil {
+		resources.Logger.Error(fmt.Sprintf("failed to list container: %v", err))
+	}
+	return containers, nil
 }
 
 func StartContainerService(c *gin.Context, containerID string) error {
@@ -21,7 +24,7 @@ func StartContainerService(c *gin.Context, containerID string) error {
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to start container: %v", err))
 	}
-	return err
+	return nil
 }
 
 func StopContainerService(c *gin.Context, containerID string) error {
@@ -49,5 +52,5 @@ func CreateContainerService(c *gin.Context, config *types.CreateContainerOptions
 		resources.Logger.Error(fmt.Sprintf("failed to create container: %v", err))
 		return nil, err
 	}
-	return &resp, err
+	return &resp, nil
 }

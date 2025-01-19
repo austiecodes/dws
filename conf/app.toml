@@ -1,5 +1,8 @@
 [App]
 Port = 8989
+SessionName = "dws"
+SessionSecret = "austiecodes"
+AESKey = "shixiongzhenshuai"
 
 [GPU]
 Enabled = true # NVML will be inited if true

@@ -9,6 +9,8 @@ import (
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/routes"
 	"github.com/docker/docker/client"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -32,15 +34,16 @@ func InitClients(appConfig AppConfig) {
 }
 
 func InitServer(appConfig AppConfig) {
-
+	config := appConfig.Server
 	r := gin.New()
-
+	// load middlewares
 	r.Use(ginzap.Ginzap(resources.Logger, time.RFC3339, true))
-
 	r.Use(ginzap.RecoveryWithZap(resources.Logger, true))
-
+	store := cookie.NewStore([]byte(config.SessionKey))
+	r.Use(sessions.Sessions(config.SessionName, store))
+	// setup routes
 	routes.SetupRoutes(r)
-	port := ":" + fmt.Sprintf("%d", appConfig.App.Port)
+	port := fmt.Sprintf(":%d", config.Port)
 	r.Run(port)
 }
 

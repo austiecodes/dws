@@ -14,14 +14,17 @@ type AppConfigPG struct {
 }
 
 type AppConfig struct {
-	App AppConfigApp `toml:"App"`
-	GPU AppConfigGPU `toml:"GPU"`
-	Log AppConfigLog `toml:"Log"`
-	PG  AppConfigPG  `toml:"PG"`
+	Server AppConfigServer `toml:"App"`
+	GPU    AppConfigGPU    `toml:"GPU"`
+	Log    AppConfigLog    `toml:"Log"`
+	PG     AppConfigPG     `toml:"PG"`
 }
 
-type AppConfigApp struct {
-	Port int `toml:"Port"`
+type AppConfigServer struct {
+	Port        int    `toml:"Port"`
+	SessionName string `toml:"SessionName"`
+	SessionKey  string `toml:"SessionKey"`
+	AESKey      string `toml:"AESKey"`
 }
 
 type AppConfigGPU struct {
