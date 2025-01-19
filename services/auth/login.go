@@ -1,90 +1,79 @@
 package services
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
+	"github.com/austiecodes/dws/db/auth"
 	"github.com/austiecodes/dws/libs/resources"
+	"github.com/forgoer/openssl"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
+// AES密钥 (16, 24, 32字节长度)
 var aesKey = []byte("1234567890123456")
 
-func encrypt(plainText, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
+// 加密函数
+func encrypt(plainText []byte, key []byte) (string, error) {
+	cipherText, err := openssl.AesCBCEncrypt(plainText, key, key, openssl.PKCS7_PADDING)
 	if err != nil {
 		return "", err
 	}
-
-	if len(plainText)%aes.BlockSize != 0 {
-		return "", errors.New("plaintext is not a multiple of the block size")
-	}
-
-	cipherText := make([]byte, len(plainText))
-	iv := key[:aes.BlockSize]
-	mode := cipher.NewCBCEncrypter(block, iv)
-	mode.CryptBlocks(cipherText, plainText)
-
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
 
+// 解密函数
 func decrypt(cipherText string, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
 	decodedCipherText, err := base64.StdEncoding.DecodeString(cipherText)
 	if err != nil {
 		return "", err
 	}
 
-	if len(decodedCipherText)%aes.BlockSize != 0 {
-		return "", errors.New("ciphertext is not a multiple of the block size")
+	plainText, err := openssl.AesCBCDecrypt(decodedCipherText, key, key, openssl.PKCS7_PADDING)
+	if err != nil {
+		return "", err
 	}
-
-	iv := key[:aes.BlockSize]
-	plainText := make([]byte, len(decodedCipherText))
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(plainText, decodedCipherText)
 
 	return string(plainText), nil
 }
 
-// mocked data
-var users = map[string]string{
-	"admin": "password123",
-}
-
 func LoginService(c *gin.Context) error {
 	session := sessions.Default(c)
-	encryptedUsername := c.PostForm("username")
+
+	encryptedUUID := c.PostForm("uuid")
+	encryptedUnixName := c.PostForm("unix_name")
 	encryptedPassword := c.PostForm("password")
 
-	username, err := decrypt(encryptedUsername, aesKey)
+	unixName, err := decrypt(encryptedUnixName, aesKey)
 	if err != nil {
-		resources.Logger.Error(fmt.Sprintf("decrypt username failed: %v", err))
+		resources.Logger.Error(fmt.Sprintf("decrypt unix_name failed: %v", err))
 		return err
 	}
-
+	uuid, err := decrypt(encryptedUUID, aesKey)
+	if err != nil {
+		resources.Logger.Error(fmt.Sprintf("decrypt uuid failed: %v", err))
+		return err
+	}
 	password, err := decrypt(encryptedPassword, aesKey)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("decrypt password failed: %v", err))
 		return err
 	}
 
-	storedPassword, ok := users[username]
-	if !ok || storedPassword != password {
-		errMsg := fmt.Sprintf("invalid username or password for user: %s", username)
-		resources.Logger.Error(errMsg)
-		return errors.New(errMsg)
+	user, err := auth.FetchUser(c, uuid)
+	if err != nil {
+		resources.Logger.Error(fmt.Sprintf("fetch user failed: %v", err))
+		return err
 	}
 
-	session.Set("user", username)
-	session.Save()
-	return nil
+	if user.Password == password {
+		session.Set("uuid", uuid)
+		session.Save()
+		resources.Logger.Info(fmt.Sprintf("user %s logged in", unixName))
+		return nil
+	} else {
+		resources.Logger.Info(fmt.Sprintf("user %s login failed", unixName))
+		return fmt.Errorf("login failed")
+	}
 }
