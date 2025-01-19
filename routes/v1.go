@@ -30,7 +30,6 @@ func setToolsRouters(r *gin.RouterGroup) {
 }
 
 func setupAuthRouters(r *gin.RouterGroup) {
-	// TODO: Implement auth login using uuid and other fileds
 	authRouters := r.Group("/auth")
 	{
 		authRouters.POST("/login", auth.Login)
@@ -53,8 +52,8 @@ func setupContainerRouters(r *gin.RouterGroup) {
 		containerRouters.GET("/running", containers.ListRunningContainers)
 		containerRouters.GET("/start", containers.StopContainers)
 		containerRouters.POST("/stop", containers.StopContainers)
-		containerRouters.POST("/remove", containers.RemoveContainers)
 		containerRouters.POST("/create", containers.CreateContainer)
+		containerRouters.POST("/remove", containers.RemoveContainers)
 	}
 }
 

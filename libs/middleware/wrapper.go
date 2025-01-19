@@ -10,7 +10,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// get session
 		session := sessions.Default(c)
 		// check user field
-		user := session.Get("user")
+		user := session.Get("uuid")
 		if user == nil {
 			c.JSON(401, gin.H{
 				"message": "Not logged in",
@@ -19,7 +19,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("user", user)
+		c.Set("uuid", user)
 		c.Next()
 	}
 }

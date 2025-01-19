@@ -6,7 +6,7 @@ import (
 
 type User struct {
 	ID        uint      `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	UUID      int       `gorm:"column:uuid" json:"uuid"`
+	UUID      string    `gorm:"column:uuid" json:"uuid"`
 	UnixName  string    `gorm:"column:unix_name" json:"unix_name"`
 	UserName  string    `gorm:"column:user_name" json:"user_name"`
 	Password  string    `gorm:"column:password" json:"password"`
