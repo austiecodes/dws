@@ -126,13 +126,7 @@ func initProgreSQL(config AppConfigPG) {
 
 	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
 	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
-
-	// conn max life time
-	connMaxLifetime, err := time.ParseDuration(config.ConnMaxLifetime)
-	if err != nil {
-		panic(fmt.Errorf("failed to parse conn max lifetime: %w", err))
-	}
-	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+	sqlDB.SetConnMaxLifetime(time.Duration(config.ConnMaxLifetime) * time.Second)
 
 	// test conn
 	if err := sqlDB.Ping(); err != nil {

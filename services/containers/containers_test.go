@@ -1,4 +1,4 @@
-package services_test
+package containers_test
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func TestStopContainers(t *testing.T) {
 	parseConfig()
 	start.InitClients(appConfig)
 	ctx := &gin.Context{}
-	err := services.StopContainerService(ctx, testContanerID)
+	err := services.StopContainerService(ctx, "admin", testContanerID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestStartContainers(t *testing.T) {
 	parseConfig()
 	start.InitClients(appConfig)
 	ctx := &gin.Context{}
-	err := services.StartContainerService(ctx, testContanerID)
+	err := services.StartContainerService(ctx, "1001", testContanerID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestRemoveContainers(t *testing.T) {
 	start.InitClients(appConfig)
 	containerID := "5ca6cf69434d"
 	ctx := &gin.Context{}
-	err := services.RemoveContainerService(ctx, containerID)
+	err := services.RemoveContainerService(ctx, "1001", containerID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -53,7 +53,7 @@ func setupContainerRouters(r *gin.RouterGroup) {
 		containerRouters.GET("/start", containers.StopContainers)
 		containerRouters.POST("/stop", containers.StopContainers)
 		containerRouters.POST("/create", containers.CreateContainer)
-		containerRouters.POST("/remove", containers.RemoveContainers)
+		containerRouters.DELETE("/remove", containers.RemoveContainers)
 	}
 }
 

@@ -37,7 +37,7 @@ func StartContainers(c *gin.Context) {
 		return
 	}
 
-	if err := services.StartContainerService(c, body.ContainerID); err != nil {
+	if err := services.StartContainerService(c, body.UUID, body.ContainerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to start container: %v", err)})
 	}
 
@@ -51,7 +51,7 @@ func StopContainers(c *gin.Context) {
 		return
 	}
 
-	if err := services.StopContainerService(c, body.ContainerID); err != nil {
+	if err := services.StopContainerService(c, body.UnixName, body.ContainerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to stop container: %v", err)})
 	}
 
@@ -65,7 +65,7 @@ func RemoveContainers(c *gin.Context) {
 		return
 	}
 
-	if err := services.RemoveContainerService(c, body.ContainerID); err != nil {
+	if err := services.RemoveContainerService(c, body.UUID, body.ContainerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to remove container: %v", err)})
 	}
 

@@ -1,23 +1,35 @@
-[App]
-Port = 8989
-SessionName = "dws"
-SessionSecret = "austiecodes"
-AESKey = "shixiongzhenshuai"
+[app]
+port = 8989
+session_name = "dws"
+session_secret = "austiecodes"
+aes_key = "shixiongzhenshuai"
 
-[GPU]
-Enabled = true # NVML will be inited if true
+[gpu]
+enabled = true
 
-[Log]
-InfoLogFilePath = "logs/info.log"
-WarningLogFilePath = "logs/warning.log"
-ErrorLogFilePath = "logs/error.log"
+[log]
+info_log_file_path = "logs/info.log"
+warning_log_file_path = "logs/warning.log"
+error_log_file_path = "logs/error.log"
 
-[PG]
-Host = "localhost"
-User = "yourusername"
-Password = "yourpassword"
-DBName = "yourdatabase"
-SSLMode = "disable"       # SSL mode disable in dev mode
-Max_open_conns = 10
-Max_idle_conns = 5
-Conn_max_lifetime = "5m"
+[pg]
+host = "localhost"
+user = "yourusername"
+password = "yourpassword"
+db_name = "yourdatabase"
+ssl_mode = "disable"
+max_open_conns = 10
+max_idle_conns = 5
+conn_max_lifetime = 60
+
+# dont need redis yet, but I'll keep it
+[redis]
+host = "localhost"
+port = "6379"
+password = ""
+db = 0
+pool_size = 10
+dial_timeout = 5
+read_timeout = 3
+write_timeout = 3
+conn_max_lifetime = 60

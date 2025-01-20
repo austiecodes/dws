@@ -7,6 +7,8 @@ import (
 )
 
 type ContainerIDrequest struct {
+	UUID        string `json:"uuid"`
+	UnixName    string `json:"unix_name"`
 	ContainerID string `json:"containerID"`
 }
 

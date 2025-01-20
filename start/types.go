@@ -2,37 +2,50 @@ package start
 
 // the types where only use in init phase
 
-type AppConfigPG struct {
-	Host            string `toml:"Host"`
-	User            string `toml:"User"`
-	Password        string `toml:"Password"`
-	DBName          string `toml:"DBName"`
-	SSLMode         string `toml:"SSLMode"`
-	MaxOpenConns    int    `toml:"Max_open_conns"`
-	MaxIdleConns    int    `toml:"Max_idle_conns"`
-	ConnMaxLifetime string `toml:"Conn_max_lifetime"`
-}
-
 type AppConfig struct {
-	Server AppConfigServer `toml:"App"`
-	GPU    AppConfigGPU    `toml:"GPU"`
-	Log    AppConfigLog    `toml:"Log"`
-	PG     AppConfigPG     `toml:"PG"`
+	Server AppConfigServer `toml:"app"`
+	GPU    AppConfigGPU    `toml:"gpu"`
+	Log    AppConfigLog    `toml:"log"`
+	PG     AppConfigPG     `toml:"pg"`
+	Redis  AppConfigRedis  `toml:"redis"`
 }
 
 type AppConfigServer struct {
-	Port        int    `toml:"Port"`
-	SessionName string `toml:"SessionName"`
-	SessionKey  string `toml:"SessionKey"`
-	AESKey      string `toml:"AESKey"`
+	Port        int    `toml:"port"`
+	SessionName string `toml:"session_name"`
+	SessionKey  string `toml:"session_key"`
+	AESKey      string `toml:"aes_key"`
 }
 
 type AppConfigGPU struct {
-	Enabled bool `toml:"Enabled"`
+	Enabled bool `toml:"enabled"`
 }
 
 type AppConfigLog struct {
-	InfoLogFilePath    string `toml:"InfoLogFilePath"`
-	WarningLogFilePath string `toml:"WarningLogFilePath"`
-	ErrorLogFilePath   string `toml:"ErrorLogFilePath"`
+	InfoLogFilePath    string `toml:"info_log_file_path"`
+	WarningLogFilePath string `toml:"warning_log_file_path"`
+	ErrorLogFilePath   string `toml:"error_log_file_path"`
+}
+
+type AppConfigPG struct {
+	Host            string `toml:"host"`
+	User            string `toml:"user"`
+	Password        string `toml:"password"`
+	DBName          string `toml:"db_name"`
+	SSLMode         string `toml:"ssl_mode"`
+	MaxOpenConns    int    `toml:"max_open_conns"`
+	MaxIdleConns    int    `toml:"max_idle_conns"`
+	ConnMaxLifetime int `toml:"conn_max_lifetime"`
+}
+
+type AppConfigRedis struct {
+	Host            string `toml:"host"`
+	Port            int    `toml:"port"`
+	Password        string `toml:"password"`
+	DB              int    `toml:"db"`
+	PoolSize        int    `toml:"pool_size"`
+	DialTimeout     int    `toml:"dial_timeout"`
+	ReadTimeout     int    `toml:"read_timeout"`
+	WriteTimeout    int    `toml:"write_timeout"`
+	ConnMaxLifetime int    `toml:"conn_max_lifetime"`
 }
