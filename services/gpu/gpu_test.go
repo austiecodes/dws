@@ -1,4 +1,4 @@
-package gpu_test
+package services_test
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package auth
+package dal
 
 import (
 	"github.com/austiecodes/dws/libs/resources"

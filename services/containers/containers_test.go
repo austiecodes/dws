@@ -1,4 +1,4 @@
-package containers_test
+package services_test
 
 import (
 	"fmt"

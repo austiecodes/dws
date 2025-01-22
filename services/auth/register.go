@@ -1,9 +1,9 @@
-package auth
+package services
 
 import (
 	"fmt"
 
-	"github.com/austiecodes/dws/db/auth"
+	dal "github.com/austiecodes/dws/dal/auth"
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
 	"github.com/gin-gonic/gin"
@@ -33,7 +33,7 @@ func RegisterService(c *gin.Context) error {
 		UnixName: unixName,
 		Password: password,
 	}
-	err = auth.CreateUser(c, user)
+	err = dal.CreateUser(c, user)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("create user failed: %v", err))
 		return err

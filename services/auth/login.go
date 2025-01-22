@@ -1,9 +1,9 @@
-package auth
+package services
 
 import (
 	"fmt"
 
-	"github.com/austiecodes/dws/db/auth"
+	dal "github.com/austiecodes/dws/dal/auth"
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
 	"github.com/gin-contrib/sessions"
@@ -27,7 +27,7 @@ func LoginService(c *gin.Context) error {
 		UUID:     uuid,
 		UnixName: unixName,
 	}
-	fetchedUser, err := auth.FetchUser(c, user.UUID)
+	fetchedUser, err := dal.FetchUser(c, user.UUID)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("fetch user failed: %v", err))
 		return err
