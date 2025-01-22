@@ -1,17 +1,18 @@
 CREATE TABLE "user" (
-    id SERIAL PRIMARY KEY,
-    uuid INT NOT NULL UNIQUE,
-    unix_name VARCHAR(255) NOT NULL,
+    id SMALLSERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     user_name VARCHAR(255) NOT NULL,
+    unix_name VARCHAR(255) NOT NULL,
+    user_type SMALLINT DEFAULT 1,
     forbidden BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 创建 uuid 和 unix_name 的联合索引
+
 CREATE INDEX idx_user_uuid_unix_name ON "user" (uuid, unix_name);
 
--- 触发器
+
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN

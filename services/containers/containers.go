@@ -3,6 +3,7 @@ package containers
 import (
 	"fmt"
 
+	"github.com/austiecodes/dws/db/containers"
 	"github.com/austiecodes/dws/models/types"
 	dtypes "github.com/docker/docker/api/types"
 
@@ -11,13 +12,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ListContainers(c *gin.Context, options container.ListOptions) ([]dtypes.Container, error) {
-	containers, err := resources.DockerClient.ContainerList(c, options)
+func ListContainers(c *gin.Context, uuid string, options container.ListOptions) ([]dtypes.Container, error) {
+	containerList, err := resources.DockerClient.ContainerList(c, options)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to list container: %v", err))
 		return nil, err
 	}
-	return containers, nil
+	storedContainers, err := containers.FetchContainerByUUID(c, uuid)
+	if err != nil {
+		resources.Logger.Error(fmt.Sprintf("failed to fetch container: %v", err))
+		return nil, err
+	}
+	// check stored containers and container ids are equal
+	for _, container := range containerList {
+		for _, storedContainer := range storedContainers {
+			if container.ID == storedContainer.ContainerID {
+				container.Names = append(container.Names, storedContainer.Name)
+			}
+		}
+	}
+	return containerList, nil
 }
 
 func StartContainerService(c *gin.Context, uuid, containerID string) error {
@@ -52,7 +66,7 @@ func RemoveContainerService(c *gin.Context, uuid, containerID string) error {
 	if err != nil {
 		return err
 	}
-	err = resources.DockerClient.ContainerRemove(c, containerID, container.RemoveOptions{Force: true})
+	err = containers.RemoveContainerByID(c, containerID)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to remove container: %v", err))
 		return err
@@ -60,11 +74,11 @@ func RemoveContainerService(c *gin.Context, uuid, containerID string) error {
 	return nil
 }
 
-func CreateContainerService(c *gin.Context, config *types.CreateContainerOptions) (*container.CreateResponse, error) {
-	resp, err := resources.DockerClient.ContainerCreate(c, config.ContainerConfig, config.HostConfig, config.NetworkingConfig, config.Platform, config.ContainerName)
+func CreateContainerService(c *gin.Context, uuid string, config *types.CreateContainerOptions) (*container.CreateResponse, error) {
+	resp, err := containers.CreateContainer(c, uuid, config)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to create container: %v", err))
 		return nil, err
 	}
-	return &resp, nil
+	return resp, nil
 }

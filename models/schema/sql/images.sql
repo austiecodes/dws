@@ -1,6 +1,6 @@
 CREATE TABLE image (
-    id SERIAL PRIMARY KEY,
-    uuid INT NOT NULL,
+    id SMALLSERIAL PRIMARY KEY,
+    uuid UUID NOT NULL,
     image_id VARCHAR(255) NOT NULL,
     repository VARCHAR(255) NOT NULL,
     tag VARCHAR(255) NOT NULL,

@@ -13,7 +13,12 @@ import (
 )
 
 func ListContainers(c *gin.Context) {
-	containers, err := services.ListContainers(c, container.ListOptions{All: true})
+	var req types.ContainerIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		return
+	}
+	containers, err := services.ListContainers(c, req.UUID, container.ListOptions{All: true})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -22,7 +27,12 @@ func ListContainers(c *gin.Context) {
 }
 
 func ListRunningContainers(c *gin.Context) {
-	containers, err := services.ListContainers(c, container.ListOptions{All: false})
+	var req types.ContainerIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		return
+	}
+	containers, err := services.ListContainers(c, req.UUID, container.ListOptions{All: false})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -31,58 +41,58 @@ func ListRunningContainers(c *gin.Context) {
 }
 
 func StartContainers(c *gin.Context) {
-	var body types.ContainerIDrequest
-	if err := c.ShouldBindJSON(&body); err != nil {
+	var req types.ContainerIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	if err := services.StartContainerService(c, body.UUID, body.ContainerID); err != nil {
+	if err := services.StartContainerService(c, req.UUID, req.ContainerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to start container: %v", err)})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s started successfully", body.ContainerID)})
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s started successfully", req.ContainerID)})
 }
 
 func StopContainers(c *gin.Context) {
-	var body types.ContainerIDrequest
-	if err := c.ShouldBindJSON(&body); err != nil {
+	var req types.ContainerIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	if err := services.StopContainerService(c, body.UnixName, body.ContainerID); err != nil {
+	if err := services.StopContainerService(c, req.UnixName, req.ContainerID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to stop container: %v", err)})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s stopped successfully", body.ContainerID)})
-}
-
-func RemoveContainers(c *gin.Context) {
-	var body types.ContainerIDrequest
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
-		return
-	}
-
-	if err := services.RemoveContainerService(c, body.UUID, body.ContainerID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to remove container: %v", err)})
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s removed successfully", body.ContainerID)})
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s stopped successfully", req.ContainerID)})
 }
 
 func CreateContainer(c *gin.Context) {
-	var body types.CreateContainerOptions
-	if err := c.ShouldBind(&body); err != nil {
+	var req types.CreateContainerReq
+	if err := c.ShouldBind(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	resp, err := services.CreateContainerService(c, &body)
+	resp, err := services.CreateContainerService(c, req.UUID, &req.Options)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create container: %v", err)})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s created successfully, id:%v ", body.ContainerName, resp.ID)})
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s created successfully, id:%v ", req.Options.ContainerName, resp.ID)})
+}
+
+func RemoveContainers(c *gin.Context) {
+	var req types.ContainerIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		return
+	}
+
+	if err := services.RemoveContainerService(c, req.UUID, req.ContainerID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to remove container: %v", err)})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Container %s removed successfully", req.ContainerID)})
 }

@@ -14,6 +14,7 @@ error_log_file_path = "logs/error.log"
 
 [pg]
 host = "localhost"
+port = "5432"
 user = "yourusername"
 password = "yourpassword"
 db_name = "yourdatabase"

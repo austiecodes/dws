@@ -66,7 +66,7 @@ func TestCreateContainers(t *testing.T) {
 	}
 
 	ctx := &gin.Context{}
-	resp, err := services.CreateContainerService(ctx, config)
+	resp, err := services.CreateContainerService(ctx, "", config)
 	fmt.Println(resp)
 	if err != nil {
 		t.Fatal(err)
