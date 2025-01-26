@@ -2,6 +2,7 @@ package dal
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
@@ -55,7 +56,6 @@ func CreateContainer(c *gin.Context, uuid string, config *types.CreateContainerO
 		return nil, err
 	}
 	return nil, nil
-
 }
 
 func RemoveContainerByID(c *gin.Context, containerID string) error {
@@ -86,4 +86,18 @@ func RemoveContainerByID(c *gin.Context, containerID string) error {
 	}
 
 	return nil
+}
+
+func CommitContainerAsImage(c *gin.Context, uuid, userName, containerID, comment string) (string, error) {
+	commitResp, err := resources.DockerClient.ContainerCommit(c, containerID, container.CommitOptions{
+		Reference: fmt.Sprintf("user-task-%d", time.Now().Unix()), // 生成唯一镜像标签
+		Comment:   comment,
+		Author:    userName,
+		Changes:   []string{"ENV TASK_MODE=production"},
+		Pause:     true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("commit failed: %v", err)
+	}
+	return commitResp.ID, nil
 }
