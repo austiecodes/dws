@@ -1,5 +1,5 @@
 CREATE TABLE "container" (
-    id SMALLSERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL,
     container_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,

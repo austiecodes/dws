@@ -34,3 +34,10 @@ dial_timeout = 5
 read_timeout = 3
 write_timeout = 3
 conn_max_lifetime = 60
+
+[mq]
+protocol = "amqp"
+host = "localhost"
+port = 5672
+username = "admin"
+password = "password"

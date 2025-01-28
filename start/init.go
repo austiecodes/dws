@@ -13,6 +13,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -24,11 +25,9 @@ var err error
 
 func InitClients(appConfig AppConfig) {
 	initLogger(appConfig.Log)
-	// init docker client
 	initDockerClient()
-	// init db
 	initProgreSQL(appConfig.PG)
-	// init gpu manager
+	initRabbitMQ(appConfig.MQ)
 	// initGPUManager()
 
 }
@@ -158,6 +157,22 @@ func initGPUManager() {
 			panic(errMsg)
 		}
 		resources.GPUManager.Devices = append(resources.GPUManager.Devices, &device)
+	}
+
+}
+
+func initRabbitMQ(config AppConfigMQ) {
+	url := fmt.Sprintf("%s://%s:%s@%s:%d",
+		config.Protocol,
+		config.Username,
+		config.Password,
+		config.Host,
+		config.Port,
+	)
+
+	resources.RMQConn, err = amqp091.Dial(url)
+	if err != nil {
+		panic(fmt.Errorf("failed to init rabbitmq: %w", err))
 	}
 
 }

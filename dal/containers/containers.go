@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/austiecodes/dws/libs/constants"
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
 	"github.com/austiecodes/dws/models/types"
@@ -13,7 +14,7 @@ import (
 
 func FetchContainerByID(c *gin.Context, containerID string) (*schema.Container, error) {
 	var container schema.Container
-	db := resources.PGClient.WithContext(c).Table("containers")
+	db := resources.PGClient.WithContext(c).Table(constants.TableContainers)
 	err := db.First(&container, "container_id = ?", containerID).Error
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to fetch container: %v", err))
@@ -24,7 +25,7 @@ func FetchContainerByID(c *gin.Context, containerID string) (*schema.Container, 
 
 func FetchContainerByUUID(c *gin.Context, uuid string) ([]*schema.Container, error) {
 	var containerList []*schema.Container
-	db := resources.PGClient.WithContext(c).Table("containers")
+	db := resources.PGClient.WithContext(c).Table(constants.TableContainers)
 	err := db.Where("uuid = ?", uuid).Find(&containerList).Error
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to fetch container: %v", err))
@@ -73,7 +74,7 @@ func RemoveContainerByID(c *gin.Context, containerID string) error {
 	}
 
 	var container schema.Container
-	err = tx.Table("containers").Delete(&container, "container_id = ?", containerID).Error
+	err = tx.Table(constants.TableContainers).Delete(&container, "container_id = ?", containerID).Error
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to remove container record: %v", err))
 		tx.Rollback()

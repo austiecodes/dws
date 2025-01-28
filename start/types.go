@@ -1,6 +1,6 @@
 package start
 
-// the types where only use in init phase
+// types only used in init phase
 
 type AppConfig struct {
 	Server AppConfigServer `toml:"app"`
@@ -8,6 +8,7 @@ type AppConfig struct {
 	Log    AppConfigLog    `toml:"log"`
 	PG     AppConfigPG     `toml:"pg"`
 	Redis  AppConfigRedis  `toml:"redis"`
+	MQ     AppConfigMQ     `toml:"mq"`
 }
 
 type AppConfigServer struct {
@@ -35,7 +36,7 @@ type AppConfigPG struct {
 	SSLMode         string `toml:"ssl_mode"`
 	MaxOpenConns    int    `toml:"max_open_conns"`
 	MaxIdleConns    int    `toml:"max_idle_conns"`
-	ConnMaxLifetime int `toml:"conn_max_lifetime"`
+	ConnMaxLifetime int    `toml:"conn_max_lifetime"`
 }
 
 type AppConfigRedis struct {
@@ -48,4 +49,12 @@ type AppConfigRedis struct {
 	ReadTimeout     int    `toml:"read_timeout"`
 	WriteTimeout    int    `toml:"write_timeout"`
 	ConnMaxLifetime int    `toml:"conn_max_lifetime"`
+}
+
+type AppConfigMQ struct {
+	Protocol string `toml:"protocol"`
+	Host     string `toml:"host"`
+	Port     int    `toml:"port"`
+	Username string `toml:"username"`
+	Password string `toml:"password"`
 }

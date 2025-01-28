@@ -1,5 +1,5 @@
 CREATE TABLE "user" (
-    id SMALLSERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     user_name VARCHAR(255) NOT NULL,
     unix_name VARCHAR(255) NOT NULL,
