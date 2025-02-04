@@ -41,7 +41,7 @@ type AppConfigPG struct {
 
 type AppConfigRedis struct {
 	Host            string `toml:"host"`
-	Port            int    `toml:"port"`
+	Port            string `toml:"port"`
 	Password        string `toml:"password"`
 	DB              int    `toml:"db"`
 	PoolSize        int    `toml:"pool_size"`

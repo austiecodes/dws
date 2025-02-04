@@ -39,5 +39,5 @@ conn_max_lifetime = 60
 protocol = "amqp"
 host = "localhost"
 port = 5672
-username = "admin"
+username = "user"
 password = "password"

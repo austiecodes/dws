@@ -28,7 +28,7 @@ func RegisterService(c *gin.Context) error {
 	}
 
 	user := &schema.User{
-		UUID:     uuid.New().String(),
+		UUID:     uuid.New(),
 		UserName: userName,
 		UnixName: unixName,
 		Password: password,

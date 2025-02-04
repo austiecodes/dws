@@ -1,8 +1,6 @@
 package dal
 
 import (
-	"errors"
-
 	"github.com/austiecodes/dws/libs/constants"
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
@@ -10,11 +8,10 @@ import (
 )
 
 func CreateUser(c *gin.Context, user *schema.User) error {
+	var err error
 	db := resources.PGClient.WithContext(c).Table(constants.TableUsers)
-	if err := db.First(&user, "uuid = ?", user.UUID).Error; err == nil {
-		return errors.New("user already exists")
-	}
-	if err := db.Create(&user).Error; err != nil {
+	err = db.Create(&user).Error
+	if err != nil {
 		return err
 	}
 	return nil

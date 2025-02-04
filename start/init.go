@@ -131,6 +131,9 @@ func initProgreSQL(config AppConfigPG) {
 	if err := sqlDB.Ping(); err != nil {
 		panic(fmt.Errorf("failed to ping PostgreSQL: %w", err))
 	}
+	var dbName string
+	resources.PGClient.Raw("SELECT current_database()").Scan(&dbName)
+	fmt.Println("Connected to database:", dbName)
 }
 
 func initGPUManager() {

@@ -101,3 +101,5 @@ tmp/
 temp/
 
 design.md
+*_test.go
+.air.toml
