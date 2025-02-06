@@ -33,7 +33,7 @@ func LoginService(c *gin.Context) error {
 		return err
 	}
 
-	if fetchedUser.UserName == userName && fetchedUser.Password == password {
+	if fetchedUser.UserName == userName && fetchedUser.UserPswd == password {
 		session.Set("uuid", uuid)
 		session.Save()
 		resources.Logger.Info(fmt.Sprintf("user %s logged in", userName))

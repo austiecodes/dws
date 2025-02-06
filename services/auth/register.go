@@ -28,10 +28,10 @@ func RegisterService(c *gin.Context) error {
 	}
 
 	user := &schema.User{
-		UUID:     uuid.New(),
+		UUID:     uuid.New().String(),
 		UserName: userName,
 		UnixName: unixName,
-		Password: password,
+		UserPswd: password,
 	}
 	err = dal.CreateUser(c, user)
 	if err != nil {

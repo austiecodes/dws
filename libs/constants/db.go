@@ -1,7 +1,7 @@
 package constants
 
 const (
-	TableContainers = "containers"
-	TableImages     = "images"
+	TableContainers = "container"
+	TableImages     = "image"
 	TableUsers      = "user"
 )

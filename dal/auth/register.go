@@ -8,10 +8,8 @@ import (
 )
 
 func CreateUser(c *gin.Context, user *schema.User) error {
-	var err error
 	db := resources.PGClient.WithContext(c).Table(constants.TableUsers)
-	err = db.Create(&user).Error
-	if err != nil {
+	if err := db.Create(&user).Error; err != nil {
 		return err
 	}
 	return nil

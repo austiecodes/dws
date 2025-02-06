@@ -44,10 +44,11 @@ func CreateContainer(c *gin.Context, uuid string, config *types.CreateContainerO
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to create container: %v", err))
 		tx.Rollback()
+		RemoveContainerByID(c, resp.ID)
 		return nil, err
 	}
 	if err := tx.Create(&schema.Container{
-		UUID:        "",
+		UUID:        uuid,
 		ContainerID: resp.ID,
 		Name:        config.ContainerConfig.Hostname,
 		Image:       config.ContainerConfig.Image,
@@ -56,7 +57,8 @@ func CreateContainer(c *gin.Context, uuid string, config *types.CreateContainerO
 		tx.Rollback()
 		return nil, err
 	}
-	return nil, nil
+	tx.Commit()
+	return &resp, nil
 }
 
 func RemoveContainerByID(c *gin.Context, containerID string) error {
