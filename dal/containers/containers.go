@@ -8,6 +8,7 @@ import (
 	"github.com/austiecodes/dws/libs/resources"
 	"github.com/austiecodes/dws/models/schema"
 	"github.com/austiecodes/dws/models/types"
+	dtypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/gin-gonic/gin"
 )
@@ -103,4 +104,21 @@ func CommitContainerAsImage(c *gin.Context, uuid, userName, containerID, comment
 		return "", fmt.Errorf("commit failed: %v", err)
 	}
 	return commitResp.ID, nil
+}
+
+func GetContainerConfigInfo(c *gin.Context, uuid, containerID string) (*dtypes.ContainerJSON, error) {
+	responseJSON, err := resources.DockerClient.ContainerInspect(c, containerID)
+	if err != nil {
+		resources.Logger.Error(fmt.Sprintf("failed to inspect container: %v", err))
+		return nil, err
+	}
+	return &responseJSON, nil
+}
+
+func GetContainerMounts(c *gin.Context, uuid, containerID string) ([]dtypes.MountPoint, error) {
+	resp, err := GetContainerConfigInfo(c, uuid, containerID)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Mounts, err
 }
