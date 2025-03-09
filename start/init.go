@@ -26,10 +26,9 @@ var err error
 func InitClients(appConfig AppConfig) {
 	initLogger(appConfig.Log)
 	initDockerClient()
-	initProgreSQL(appConfig.PG)
+	initPG(appConfig.PG)
 	initRabbitMQ(appConfig.MQ)
 	// initGPUManager()
-
 }
 
 func InitServer(appConfig AppConfig) {
@@ -43,7 +42,9 @@ func InitServer(appConfig AppConfig) {
 	// setup routes
 	routes.SetupRoutes(r)
 	port := fmt.Sprintf(":%d", config.Port)
-	r.Run(port)
+	if err = r.Run(port); err != nil {
+		panic(err)
+	}
 }
 
 func initLogger(config AppConfigLog) {
@@ -103,7 +104,7 @@ func initDockerClient() {
 	}
 }
 
-func initProgreSQL(config AppConfigPG) {
+func initPG(config AppConfigPG) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=%s",
 		config.Host,
 		config.User,
@@ -133,7 +134,6 @@ func initProgreSQL(config AppConfigPG) {
 	}
 	var dbName string
 	resources.PGClient.Raw("SELECT current_database()").Scan(&dbName)
-	fmt.Println("Connected to database:", dbName)
 }
 
 func initGPUManager() {

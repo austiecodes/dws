@@ -50,7 +50,7 @@ func setupContainerRouters(r *gin.RouterGroup) {
 	{
 		containerRouters.GET("/list", containers.ListContainers)
 		containerRouters.GET("/running", containers.ListRunningContainers)
-		containerRouters.GET("/start", containers.StopContainers)
+		containerRouters.GET("/start", containers.StartContainers)
 		containerRouters.POST("/stop", containers.StopContainers)
 		containerRouters.POST("/create", containers.CreateContainer)
 		containerRouters.DELETE("/remove", containers.RemoveContainers)

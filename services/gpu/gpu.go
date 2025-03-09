@@ -26,7 +26,7 @@ func GPUStatus(c *gin.Context) ([]*types.GPUMetrics, error) {
 		log.Fatalf("Unable to get device count: %v", nvml.ErrorString(err))
 	}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		var gpu types.GPUMetrics
 		device, err := nvml.DeviceGetHandleByIndex(i)
 		if err != nvml.SUCCESS {
