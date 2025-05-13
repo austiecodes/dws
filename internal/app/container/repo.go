@@ -1,11 +1,11 @@
-package dal
+package container
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/austiecodes/dws/libs/constants"
-	"github.com/austiecodes/dws/libs/resources"
+	"github.com/austiecodes/dws/lib/constants"
+	"github.com/austiecodes/dws/lib/resources"
 	"github.com/austiecodes/dws/models/schema"
 	"github.com/austiecodes/dws/models/types"
 	dtypes "github.com/docker/docker/api/types"

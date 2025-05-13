@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
-	"github.com/austiecodes/dws/libs/managers"
-	"github.com/austiecodes/dws/libs/resources"
+	"github.com/austiecodes/dws/lib/managers"
+	"github.com/austiecodes/dws/lib/resources"
 	"github.com/austiecodes/dws/routes"
 	"github.com/docker/docker/client"
 	"github.com/gin-contrib/sessions"

@@ -1,13 +1,11 @@
-package services
+package container
 
 import (
 	"fmt"
 
-	dal "github.com/austiecodes/dws/dal/containers"
+	"github.com/austiecodes/dws/lib/resources"
 	"github.com/austiecodes/dws/models/types"
 	dtypes "github.com/docker/docker/api/types"
-
-	"github.com/austiecodes/dws/libs/resources"
 	"github.com/docker/docker/api/types/container"
 	"github.com/gin-gonic/gin"
 )
@@ -18,7 +16,7 @@ func ListContainers(c *gin.Context, uuid string, options container.ListOptions) 
 		resources.Logger.Error(fmt.Sprintf("failed to list container: %v", err))
 		return nil, err
 	}
-	storedContainers, err := dal.FetchContainerByUUID(c, uuid)
+	storedContainers, err := FetchContainerByUUID(c, uuid)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to fetch container: %v", err))
 		return nil, err
@@ -66,7 +64,7 @@ func RemoveContainerService(c *gin.Context, uuid, containerID string) error {
 	if err != nil {
 		return err
 	}
-	err = dal.RemoveContainerByID(c, containerID)
+	err = RemoveContainerByID(c, containerID)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to remove container: %v", err))
 		return err
@@ -75,7 +73,7 @@ func RemoveContainerService(c *gin.Context, uuid, containerID string) error {
 }
 
 func CreateContainerService(c *gin.Context, uuid string, config *types.CreateContainerOptions) (*container.CreateResponse, error) {
-	resp, err := dal.CreateContainer(c, uuid, config)
+	resp, err := CreateContainer(c, uuid, config)
 	if err != nil {
 		resources.Logger.Error(fmt.Sprintf("failed to create container: %v", err))
 		return nil, err

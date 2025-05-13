@@ -1,10 +1,10 @@
-package services
+package auth
 
 import (
 	"fmt"
 
-	"github.com/austiecodes/dws/libs/resources"
-	"github.com/austiecodes/dws/libs/utils"
+	"github.com/austiecodes/dws/lib/resources"
+	"github.com/austiecodes/dws/lib/utils"
 	"github.com/gin-gonic/gin"
 )
 
