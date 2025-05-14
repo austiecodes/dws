@@ -1,0 +1,4 @@
+[log]
+info_log_file_path = "logs/info.log"
+warning_log_file_path = "logs/warning.log"
+error_log_file_path = "logs/error.log"
