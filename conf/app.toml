@@ -1,5 +1,5 @@
 [app]
-port = 8989
-session_name = "dws"
-session_secret = "austiecodes"
-aes_key = "shixiongzhenshuai"
+port = 8080
+session_name = "dws_session"
+session_key = "your-session-key-here"
+aes_key = "your-aes-key-here"

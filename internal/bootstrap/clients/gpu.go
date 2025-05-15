@@ -3,7 +3,6 @@ package clients
 import (
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/NVIDIA/go-nvml/pkg/nvml"
 	"github.com/austiecodes/dws/lib/managers"
 	"github.com/austiecodes/dws/lib/resources"
@@ -25,7 +24,7 @@ func (g *GPUClient) LoadConfig() error {
 	var config struct {
 		GPU GPUConfig `toml:"gpu"`
 	}
-	if _, err := toml.DecodeFile("conf/gpu.toml", &config); err != nil {
+	if err := LoadConfig("gpu.toml", &config); err != nil {
 		return fmt.Errorf("error loading GPU config: %w", err)
 	}
 	g.config = config.GPU

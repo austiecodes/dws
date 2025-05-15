@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/austiecodes/dws/lib/resources"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -34,7 +33,7 @@ func (p *PostgresClient) LoadConfig() error {
 	var config struct {
 		PG PGConfig `toml:"pg"`
 	}
-	if _, err := toml.DecodeFile("conf/database.toml", &config); err != nil {
+	if err := LoadConfig("database.toml", &config); err != nil {
 		return fmt.Errorf("error loading database config: %w", err)
 	}
 	p.config = config.PG

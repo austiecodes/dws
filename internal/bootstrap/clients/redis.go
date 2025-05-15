@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/austiecodes/dws/lib/resources"
 	"github.com/redis/go-redis/v9"
 )
@@ -34,7 +33,7 @@ func (r *RedisClient) LoadConfig() error {
 	var config struct {
 		Redis RedisConfig `toml:"redis"`
 	}
-	if _, err := toml.DecodeFile("conf/redis.toml", &config); err != nil {
+	if err := LoadConfig("redis.toml", &config); err != nil {
 		return fmt.Errorf("error loading redis config: %w", err)
 	}
 	r.config = config.Redis

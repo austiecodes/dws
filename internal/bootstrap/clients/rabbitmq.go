@@ -3,7 +3,6 @@ package clients
 import (
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/austiecodes/dws/lib/resources"
 	"github.com/rabbitmq/amqp091-go"
 )
@@ -28,7 +27,7 @@ func (r *RabbitMQClient) LoadConfig() error {
 	var config struct {
 		MQ MQConfig `toml:"mq"`
 	}
-	if _, err := toml.DecodeFile("conf/mq.toml", &config); err != nil {
+	if err := LoadConfig("mq.toml", &config); err != nil {
 		return fmt.Errorf("error loading MQ config: %w", err)
 	}
 	r.config = config.MQ

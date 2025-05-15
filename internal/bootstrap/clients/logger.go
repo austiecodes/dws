@@ -3,7 +3,6 @@ package clients
 import (
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/austiecodes/dws/lib/resources"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,10 +27,16 @@ func (l *LoggerClient) LoadConfig() error {
 	var config struct {
 		Log LogConfig `toml:"log"`
 	}
-	if _, err := toml.DecodeFile("conf/log.toml", &config); err != nil {
+	if err := LoadConfig("log.toml", &config); err != nil {
 		return fmt.Errorf("error loading log config: %w", err)
 	}
+
 	l.config = config.Log
+	// Convert log file paths to absolute paths
+	l.config.InfoLogFilePath = ResolvePath(l.config.InfoLogFilePath)
+	l.config.WarningLogFilePath = ResolvePath(l.config.WarningLogFilePath)
+	l.config.ErrorLogFilePath = ResolvePath(l.config.ErrorLogFilePath)
+
 	return nil
 }
 
