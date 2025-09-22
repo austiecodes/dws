@@ -1,5 +1,0 @@
-[app]
-port = 8080
-session_name = "dws_session"
-session_key = "your-session-key-here"
-aes_key = "your-aes-key-here"

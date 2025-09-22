@@ -5,16 +5,11 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/austiecodes/dws/internal/app/auth"
-	"github.com/austiecodes/dws/internal/app/container"
-	"github.com/austiecodes/dws/internal/app/image"
-	"github.com/austiecodes/dws/internal/app/task"
-	"github.com/austiecodes/dws/internal/router"
-	"github.com/austiecodes/dws/lib/resources"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type ServerConfig struct {
@@ -47,17 +42,13 @@ func (s *Server) LoadConfig() error {
 func (s *Server) Init() error {
 	s.engine = gin.New()
 	// load middlewares
-	s.engine.Use(ginzap.Ginzap(resources.Logger, time.RFC3339, true))
-	s.engine.Use(ginzap.RecoveryWithZap(resources.Logger, true))
+	//
+	logger, _ := zap.NewProduction()
+	s.engine.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	s.engine.Use(ginzap.RecoveryWithZap(logger, true))
 	store := cookie.NewStore([]byte(s.config.SessionKey))
 	s.engine.Use(sessions.Sessions(s.config.SessionName, store))
 	// setup routes
-	router.InitRouter([]router.Router{
-		auth.NewRouter(),
-		container.NewRouter(),
-		image.NewRouter(),
-		task.NewRouter(),
-	})
 	return nil
 }
 

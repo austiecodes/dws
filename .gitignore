@@ -1,72 +1,3 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-
-# Distribution / packaging
-.Python
-env/
-build/
-build-examples/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-pip-wheel-metadata/
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# All log files
-*.log
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# dotenv
-.env
-
-# virtualenv
-.venv
-venv/
-ENV/
-
-# mypy
-.mypy_cache/
-
-# Determined distributable package
-determined-*.tar.gz
-
-# All Python wheels
-*.whl
-
-# Node modules
-node_modules/
-
 # VSCode
 .vscode/
 
@@ -99,7 +30,6 @@ public.txt
 # air
 tmp/
 temp/
-
 design.md
 *_test.go
 .air.toml
