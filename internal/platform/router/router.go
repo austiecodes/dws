@@ -28,6 +28,7 @@ func Setup(engine *gin.Engine, cfg *libconfig.AppConfig) error {
 	engine.Use(sessions.Sessions(cfg.App.SessionName, store))
 
 	services.InitContainerService(cfg.Docker)
+	services.InitTaskService()
 
 	api := engine.Group("/api/v1")
 	auth := api.Group("/auth")
@@ -45,6 +46,14 @@ func Setup(engine *gin.Engine, cfg *libconfig.AppConfig) error {
 	containers.POST("/:uuid/start", handlers.StartContainer)
 	containers.DELETE("/:uuid", handlers.DeleteContainer)
 	containers.GET("/images", handlers.ListImages)
+
+	// Task endpoints
+	tasks := api.Group("/tasks")
+	tasks.Use(handlers.RequireAuthMiddleware())
+	tasks.POST("", handlers.CreateTask)
+	tasks.GET("", handlers.ListTasks)
+	tasks.GET("/:id", handlers.GetTask)
+	tasks.POST("/:id/cancel", handlers.CancelTask)
 
 	return nil
 }

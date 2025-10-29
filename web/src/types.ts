@@ -14,3 +14,26 @@ export interface Container {
   status: string;
   created_at: string;
 }
+
+export interface Task {
+  id: number;
+  user_id: number;
+  container_id: number;
+  command: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'killed';
+  expected_duration: number;
+  priority: number;
+  started_at?: string;
+  completed_at?: string;
+  output: string;
+  exit_code?: number;
+  created_at: string;
+  container?: Container;
+}
+
+export interface CreateTaskRequest {
+  container_id: number;
+  command: string;
+  expected_duration: number;
+  priority?: number;
+}

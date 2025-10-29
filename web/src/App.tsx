@@ -18,9 +18,14 @@ export default function App() {
               <Link to="/dashboard">控制台</Link>
             </Button>
             {user ? (
-              <Button variant="ghost" asChild>
-                <Link to="/containers">容器</Link>
-              </Button>
+              <>
+                <Button variant="ghost" asChild>
+                  <Link to="/containers">容器</Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link to="/tasks">任务</Link>
+                </Button>
+              </>
             ) : null}
             {user ? (
               <Button variant="outline" size="sm" onClick={() => logout()}>

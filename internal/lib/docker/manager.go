@@ -265,3 +265,48 @@ func IsPortFree(port int) bool {
 	_ = ln.Close()
 	return true
 }
+
+// ExecResult holds the output and exit code of a container exec command.
+type ExecResult struct {
+	Output   string
+	ExitCode int
+	Error    error
+}
+
+// ExecCommand runs a command inside a running container and returns the output.
+func (m *Manager) ExecCommand(ctx context.Context, containerID string, cmd []string) *ExecResult {
+	execConfig := container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmd,
+	}
+
+	execIDResp, err := m.client.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return &ExecResult{Error: fmt.Errorf("create exec: %w", err)}
+	}
+
+	attachResp, err := m.client.ContainerExecAttach(ctx, execIDResp.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return &ExecResult{Error: fmt.Errorf("attach exec: %w", err)}
+	}
+	defer attachResp.Close()
+
+	output, err := io.ReadAll(attachResp.Reader)
+	if err != nil {
+		return &ExecResult{Error: fmt.Errorf("read exec output: %w", err)}
+	}
+
+	inspectResp, err := m.client.ContainerExecInspect(ctx, execIDResp.ID)
+	if err != nil {
+		return &ExecResult{
+			Output: string(output),
+			Error:  fmt.Errorf("inspect exec: %w", err),
+		}
+	}
+
+	return &ExecResult{
+		Output:   string(output),
+		ExitCode: inspectResp.ExitCode,
+	}
+}

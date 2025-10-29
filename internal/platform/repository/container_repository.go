@@ -60,6 +60,15 @@ func (r *ContainerRepository) ListAll(ctx context.Context) ([]libdb.Container, e
 	return containers, nil
 }
 
+func (r *ContainerRepository) GetByID(ctx context.Context, id uint) (*libdb.Container, error) {
+	conn := libdb.MustInstance()
+	var container libdb.Container
+	if err := conn.WithContext(ctx).Where("id = ?", id).First(&container).Error; err != nil {
+		return nil, err
+	}
+	return &container, nil
+}
+
 func (r *ContainerRepository) GetByUUID(ctx context.Context, uuid string) (*libdb.Container, error) {
 	conn := libdb.MustInstance()
 	var container libdb.Container

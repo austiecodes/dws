@@ -11,6 +11,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ContainersPage from "./pages/ContainersPage";
+import TasksPage from "./pages/TasksPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -24,6 +25,7 @@ createRoot(document.getElementById("root")!).render(
             <Route element={<RequireAuth />}>
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="containers" element={<ContainersPage />} />
+              <Route path="tasks" element={<TasksPage />} />
             </Route>
           </Route>
         </Routes>
