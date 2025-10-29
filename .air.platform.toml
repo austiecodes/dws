@@ -1,0 +1,21 @@
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp/platform"
+
+[build]
+  cmd = "go build -o ./tmp/platform/platform ./cmd/platform"
+  bin = "./tmp/platform/platform"
+  delay = 1000
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "web/node_modules"]
+  exclude_regex = ["_test.go"]
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  kill_delay = "0s"
+  rerun_delay = 500
+
+[log]
+  time = false
+
+[screen]
+  clear_on_rebuild = false
+  keep_scroll = true
+
