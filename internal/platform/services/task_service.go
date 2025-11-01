@@ -26,7 +26,7 @@ func InitTaskService() {
 // Create validates and creates a new task for the user.
 func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint, command string, taskType libdb.TaskType, expectedDuration, priority int) (*libdb.Task, error) {
 	// Verify the container exists and belongs to the user
-	container, err := repository.Containers.GetByID(ctx, containerID)
+	container, err := repository.ContainerGetByID(ctx, nil, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint,
 		Priority:         priority,
 	}
 
-	if err := repository.Tasks.Create(task); err != nil {
+	if err := repository.TaskCreate(ctx, nil, task); err != nil {
 		return nil, err
 	}
 
@@ -61,7 +61,7 @@ func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint,
 
 // GetByID retrieves a task by ID, ensuring the user owns it.
 func (s *TaskService) GetByID(ctx context.Context, taskID, userID uint) (*libdb.Task, error) {
-	task, err := repository.Tasks.GetByID(taskID, true)
+	task, err := repository.TaskGetByID(ctx, nil, taskID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -76,22 +76,22 @@ func (s *TaskService) GetByID(ctx context.Context, taskID, userID uint) (*libdb.
 
 // List returns all tasks for a user.
 func (s *TaskService) List(ctx context.Context, userID uint) ([]libdb.Task, error) {
-	return repository.Tasks.ListByUser(userID, true)
+	return repository.TaskListByUser(ctx, nil, userID, true)
 }
 
 // Cancel allows a user to cancel their own task (only if pending or running).
 func (s *TaskService) Cancel(ctx context.Context, taskID, userID uint) error {
-	return repository.Tasks.CancelByUser(taskID, userID)
+	return repository.TaskCancelByUser(ctx, nil, taskID, userID)
 }
 
 // GetQueueStatistics returns system-wide task queue statistics.
 func (s *TaskService) GetQueueStatistics(ctx context.Context) (map[string]interface{}, error) {
-	runningCounts, err := repository.Tasks.GetRunningCountsByType()
+	runningCounts, err := repository.TaskGetRunningCountsByType(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	pendingCounts, err := repository.Tasks.GetPendingCountsByType()
+	pendingCounts, err := repository.TaskGetPendingCountsByType(ctx, nil)
 	if err != nil {
 		return nil, err
 	}

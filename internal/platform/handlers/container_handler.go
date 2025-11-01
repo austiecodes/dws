@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/austiecodes/dws/internal/platform/services"
-	"github.com/austiecodes/dws/internal/platform/types"
 )
 
 type createContainerRequest struct {
@@ -26,8 +25,7 @@ func ListContainers(c *gin.Context) {
 		return
 	}
 
-	response := types.NewContainerListResponse(containers)
-	c.JSON(http.StatusOK, gin.H{"containers": response})
+	c.JSON(http.StatusOK, gin.H{"containers": newContainerListJSON(containers)})
 }
 
 func CreateContainer(c *gin.Context) {
@@ -63,8 +61,7 @@ func CreateContainer(c *gin.Context) {
 		}
 	}
 
-	resp := types.NewContainerResponse(container)
-	c.JSON(http.StatusCreated, gin.H{"container": resp})
+	c.JSON(http.StatusCreated, gin.H{"container": newContainerJSON(container)})
 }
 
 func ListImages(c *gin.Context) {

@@ -27,7 +27,7 @@ func InitWorkerService() {
 
 // requireAdmin checks if the user is admin, returns error if not.
 func (s *WorkerService) requireAdmin(ctx context.Context, userID uint) error {
-	user, err := repository.Users.FindByID(ctx, userID)
+	user, err := repository.UserFindByID(ctx, nil, userID)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (s *WorkerService) Create(ctx context.Context, userID uint, id, name, addre
 	}
 
 	// Check if ID already exists
-	existing, err := repository.Workers.GetByID(id)
+	existing, err := repository.WorkerGetByID(ctx, nil, id)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (s *WorkerService) Create(ctx context.Context, userID uint, id, name, addre
 		Metadata: datatypes.JSON(metadataJSON),
 	}
 
-	if err := repository.Workers.Create(worker); err != nil {
+	if err := repository.WorkerCreate(ctx, nil, worker); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +77,7 @@ func (s *WorkerService) Create(ctx context.Context, userID uint, id, name, addre
 
 // GetByID retrieves a worker by ID.
 func (s *WorkerService) GetByID(ctx context.Context, id string) (*libdb.Worker, error) {
-	worker, err := repository.Workers.GetByID(id)
+	worker, err := repository.WorkerGetByID(ctx, nil, id)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *WorkerService) GetByID(ctx context.Context, id string) (*libdb.Worker, 
 
 // List returns all workers (visible to all users).
 func (s *WorkerService) List(ctx context.Context) ([]libdb.Worker, error) {
-	return repository.Workers.List()
+	return repository.WorkerList(ctx, nil)
 }
 
 // Update updates a worker (admin only).
@@ -98,7 +98,7 @@ func (s *WorkerService) Update(ctx context.Context, userID uint, id string, upda
 		return err
 	}
 
-	worker, err := repository.Workers.GetByID(id)
+	worker, err := repository.WorkerGetByID(ctx, nil, id)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (s *WorkerService) Update(ctx context.Context, userID uint, id string, upda
 		updates["metadata"] = datatypes.JSON(metadataJSON)
 	}
 
-	return repository.Workers.Update(id, updates)
+	return repository.WorkerUpdate(ctx, nil, id, updates)
 }
 
 // Delete deletes a worker (admin only).
@@ -124,7 +124,7 @@ func (s *WorkerService) Delete(ctx context.Context, userID uint, id string) erro
 		return err
 	}
 
-	worker, err := repository.Workers.GetByID(id)
+	worker, err := repository.WorkerGetByID(ctx, nil, id)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (s *WorkerService) Delete(ctx context.Context, userID uint, id string) erro
 	}
 
 	// Check if worker has active containers
-	count, err := repository.Workers.CountContainers(id)
+	count, err := repository.WorkerCountContainers(ctx, nil, id)
 	if err != nil {
 		return err
 	}
@@ -141,11 +141,10 @@ func (s *WorkerService) Delete(ctx context.Context, userID uint, id string) erro
 		return ErrWorkerHasContainers
 	}
 
-	return repository.Workers.Delete(id)
+	return repository.WorkerDelete(ctx, nil, id)
 }
 
 // GetContainerCount returns the number of containers on a worker.
 func (s *WorkerService) GetContainerCount(ctx context.Context, workerID string) (int64, error) {
-	return repository.Workers.CountContainers(workerID)
+	return repository.WorkerCountContainers(ctx, nil, workerID)
 }
-

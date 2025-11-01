@@ -5,19 +5,14 @@ import (
 	"errors"
 	"time"
 
-	libdb "github.com/austiecodes/dws/internal/lib/db"
 	"gorm.io/gorm"
+
+	libdb "github.com/austiecodes/dws/internal/lib/db"
 )
 
-type UserRepository struct {
-}
-
-var Users = &UserRepository{}
-
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*libdb.User, error) {
+func UserFindByEmail(ctx context.Context, db *gorm.DB, email string) (*libdb.User, error) {
 	var user libdb.User
-	conn := libdb.MustInstance()
-	result := conn.WithContext(ctx).Where("email = ?", email).First(&user)
+	result := dbWithContext(ctx, db).Where("email = ?", email).First(&user)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -27,10 +22,9 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*libdb.
 	return &user, nil
 }
 
-func (r *UserRepository) FindByID(ctx context.Context, id uint) (*libdb.User, error) {
+func UserFindByID(ctx context.Context, db *gorm.DB, id uint) (*libdb.User, error) {
 	var user libdb.User
-	conn := libdb.MustInstance()
-	result := conn.WithContext(ctx).First(&user, id)
+	result := dbWithContext(ctx, db).First(&user, id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -40,41 +34,37 @@ func (r *UserRepository) FindByID(ctx context.Context, id uint) (*libdb.User, er
 	return &user, nil
 }
 
-func (r *UserRepository) UpdateLastLogin(ctx context.Context, id uint, ts time.Time) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).
+func UserUpdateLastLogin(ctx context.Context, db *gorm.DB, id uint, ts time.Time) error {
+	return dbWithContext(ctx, db).
 		Model(&libdb.User{}).
 		Where("id = ?", id).
 		Update("last_login_at", ts).Error
 }
 
-func (r *UserRepository) Create(ctx context.Context, user *libdb.User) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).Create(user).Error
+func UserCreate(ctx context.Context, db *gorm.DB, user *libdb.User) error {
+	return dbWithContext(ctx, db).Create(user).Error
 }
 
-func (r *UserRepository) List(ctx context.Context) ([]libdb.User, error) {
-	conn := libdb.MustInstance()
+func UserList(ctx context.Context, db *gorm.DB) ([]libdb.User, error) {
 	var users []libdb.User
-	if err := conn.WithContext(ctx).Order("created_at ASC").Find(&users).Error; err != nil {
+	if err := dbWithContext(ctx, db).Order("created_at ASC").Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
 }
 
-func (r *UserRepository) Count(ctx context.Context) (int64, error) {
-	conn := libdb.MustInstance()
+func UserCount(ctx context.Context, db *gorm.DB) (int64, error) {
 	var count int64
-	if err := conn.WithContext(ctx).Model(&libdb.User{}).Count(&count).Error; err != nil {
+	if err := dbWithContext(ctx, db).Model(&libdb.User{}).Count(&count).Error; err != nil {
 		return 0, err
 	}
 	return count, nil
 }
 
-func (r *UserRepository) CountAdmins(ctx context.Context) (int64, error) {
-	conn := libdb.MustInstance()
+func UserCountAdmins(ctx context.Context, db *gorm.DB) (int64, error) {
 	var count int64
-	if err := conn.WithContext(ctx).Model(&libdb.User{}).
+	if err := dbWithContext(ctx, db).
+		Model(&libdb.User{}).
 		Where("is_admin = ?", true).
 		Count(&count).Error; err != nil {
 		return 0, err
@@ -82,9 +72,8 @@ func (r *UserRepository) CountAdmins(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-func (r *UserRepository) SetAdmin(ctx context.Context, id uint, isAdmin bool) error {
-	conn := libdb.MustInstance()
-	result := conn.WithContext(ctx).
+func UserSetAdmin(ctx context.Context, db *gorm.DB, id uint, isAdmin bool) error {
+	result := dbWithContext(ctx, db).
 		Model(&libdb.User{}).
 		Where("id = ?", id).
 		Update("is_admin", isAdmin)

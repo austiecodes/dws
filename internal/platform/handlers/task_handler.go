@@ -8,8 +8,15 @@ import (
 
 	libdb "github.com/austiecodes/dws/internal/lib/db"
 	"github.com/austiecodes/dws/internal/platform/services"
-	"github.com/austiecodes/dws/internal/platform/types"
 )
+
+type createTaskRequest struct {
+	ContainerID      uint   `json:"container_id" binding:"required"`
+	Command          string `json:"command" binding:"required"`
+	TaskType         string `json:"task_type" binding:"required,oneof=cpu gpu"`
+	ExpectedDuration int    `json:"expected_duration" binding:"required,min=1"`
+	Priority         int    `json:"priority"`
+}
 
 func CreateTask(c *gin.Context) {
 	userID, ok := requireUser(c)
@@ -17,7 +24,7 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	var req types.CreateTaskRequest
+	var req createTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -49,7 +56,7 @@ func CreateTask(c *gin.Context) {
 		}
 	}
 
-	response := types.NewTaskResponse(task)
+	response := newTaskJSON(task)
 	c.JSON(http.StatusCreated, gin.H{"task": response})
 }
 
@@ -65,8 +72,7 @@ func ListTasks(c *gin.Context) {
 		return
 	}
 
-	response := types.NewTaskListResponse(tasks)
-	c.JSON(http.StatusOK, gin.H{"tasks": response})
+	c.JSON(http.StatusOK, gin.H{"tasks": newTaskListJSON(tasks)})
 }
 
 func GetTask(c *gin.Context) {
@@ -97,8 +103,7 @@ func GetTask(c *gin.Context) {
 		}
 	}
 
-	response := types.NewTaskResponse(task)
-	c.JSON(http.StatusOK, gin.H{"task": response})
+	c.JSON(http.StatusOK, gin.H{"task": newTaskJSON(task)})
 }
 
 func CancelTask(c *gin.Context) {

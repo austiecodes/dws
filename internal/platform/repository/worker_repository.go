@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"errors"
+	"context"
 	"time"
 
 	"gorm.io/gorm"
@@ -9,22 +9,14 @@ import (
 	libdb "github.com/austiecodes/dws/internal/lib/db"
 )
 
-type WorkerRepository struct{}
-
-var Workers = &WorkerRepository{}
-
-// Create creates a new worker.
-func (r *WorkerRepository) Create(worker *libdb.Worker) error {
-	conn := libdb.MustInstance()
-	return conn.Create(worker).Error
+func WorkerCreate(ctx context.Context, db *gorm.DB, worker *libdb.Worker) error {
+	return dbWithContext(ctx, db).Create(worker).Error
 }
 
-// GetByID retrieves a worker by ID.
-func (r *WorkerRepository) GetByID(id string) (*libdb.Worker, error) {
-	conn := libdb.MustInstance()
+func WorkerGetByID(ctx context.Context, db *gorm.DB, id string) (*libdb.Worker, error) {
 	var worker libdb.Worker
-	if err := conn.Where("id = ?", id).First(&worker).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := dbWithContext(ctx, db).Where("id = ?", id).First(&worker).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, err
@@ -32,47 +24,45 @@ func (r *WorkerRepository) GetByID(id string) (*libdb.Worker, error) {
 	return &worker, nil
 }
 
-// List returns all workers.
-func (r *WorkerRepository) List() ([]libdb.Worker, error) {
-	conn := libdb.MustInstance()
+func WorkerList(ctx context.Context, db *gorm.DB) ([]libdb.Worker, error) {
 	var workers []libdb.Worker
-	if err := conn.Order("created_at DESC").Find(&workers).Error; err != nil {
+	if err := dbWithContext(ctx, db).Order("created_at DESC").Find(&workers).Error; err != nil {
 		return nil, err
 	}
 	return workers, nil
 }
 
-// Update updates a worker's fields.
-func (r *WorkerRepository) Update(id string, updates map[string]interface{}) error {
-	conn := libdb.MustInstance()
-	updates["updated_at"] = time.Now()
-	return conn.Model(&libdb.Worker{}).Where("id = ?", id).Updates(updates).Error
-}
-
-// UpdateHeartbeat updates the last heartbeat timestamp.
-func (r *WorkerRepository) UpdateHeartbeat(id string) error {
-	conn := libdb.MustInstance()
-	return conn.Model(&libdb.Worker{}).
+func WorkerUpdate(ctx context.Context, db *gorm.DB, id string, updates map[string]interface{}) error {
+	if updates == nil {
+		return nil
+	}
+	if _, ok := updates["updated_at"]; !ok {
+		updates["updated_at"] = time.Now()
+	}
+	return dbWithContext(ctx, db).
+		Model(&libdb.Worker{}).
 		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"last_heartbeat": time.Now(),
-			"status":         libdb.WorkerStatusOnline,
-		}).Error
+		Updates(updates).Error
 }
 
-// Delete deletes a worker by ID.
-func (r *WorkerRepository) Delete(id string) error {
-	conn := libdb.MustInstance()
-	return conn.Where("id = ?", id).Delete(&libdb.Worker{}).Error
+func WorkerUpdateHeartbeat(ctx context.Context, db *gorm.DB, id string, status libdb.WorkerStatus) error {
+	return WorkerUpdate(ctx, db, id, map[string]interface{}{
+		"last_heartbeat": time.Now(),
+		"status":         status,
+	})
 }
 
-// CountContainers returns the number of containers on a worker.
-func (r *WorkerRepository) CountContainers(workerID string) (int64, error) {
-	conn := libdb.MustInstance()
+func WorkerDelete(ctx context.Context, db *gorm.DB, id string) error {
+	return dbWithContext(ctx, db).
+		Where("id = ?", id).
+		Delete(&libdb.Worker{}).Error
+}
+
+func WorkerCountContainers(ctx context.Context, db *gorm.DB, workerID string) (int64, error) {
 	var count int64
-	err := conn.Model(&libdb.Container{}).
+	err := dbWithContext(ctx, db).
+		Model(&libdb.Container{}).
 		Where("worker_id = ? AND is_deleted = false", workerID).
 		Count(&count).Error
 	return count, err
 }
-

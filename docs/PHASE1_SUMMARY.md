@@ -49,7 +49,7 @@ internal/lib/db/worker.go                         # Worker GORM模型
 internal/platform/repository/worker_repository.go # Worker数据访问
 internal/platform/services/worker_service.go      # Worker业务逻辑
 internal/platform/handlers/worker_handler.go      # Worker HTTP处理
-internal/platform/types/worker.go                 # Worker DTO
+internal/platform/handlers/api_models.go          # Worker/Task/Container展示结构
 
 web/src/lib/workers.ts                            # Worker API客户端
 web/src/pages/WorkersPage.tsx                     # Worker管理页面
@@ -163,4 +163,3 @@ Phase 2将实现：
 **实现时间**: ~45分钟  
 **代码行数**: 约800行（后端400 + 前端300 + SQL 100）  
 **测试状态**: 编译通过 ✅
-

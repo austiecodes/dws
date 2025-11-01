@@ -25,7 +25,7 @@ type AuthService struct {
 var Auth = &AuthService{}
 
 func (s *AuthService) Authenticate(ctx context.Context, email, password string) (*libdb.User, error) {
-	user, err := repository.Users.FindByEmail(ctx, email)
+	user, err := repository.UserFindByEmail(ctx, nil, email)
 	if err != nil {
 		return nil, fmt.Errorf("find user by email: %w", err)
 	}
@@ -37,7 +37,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email, password string) 
 	}
 
 	now := time.Now().UTC()
-	if err := repository.Users.UpdateLastLogin(ctx, user.ID, now); err != nil {
+	if err := repository.UserUpdateLastLogin(ctx, nil, user.ID, now); err != nil {
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 	user.LastLoginAt = &now
@@ -45,7 +45,7 @@ func (s *AuthService) Authenticate(ctx context.Context, email, password string) 
 }
 
 func (s *AuthService) GetUserByID(ctx context.Context, id uint) (*libdb.User, error) {
-	user, err := repository.Users.FindByID(ctx, id)
+	user, err := repository.UserFindByID(ctx, nil, id)
 	if err != nil {
 		return nil, fmt.Errorf("find user by id: %w", err)
 	}
@@ -62,7 +62,7 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		return nil, fmt.Errorf("email and display name required")
 	}
 
-	existing, err := repository.Users.FindByEmail(ctx, email)
+	existing, err := repository.UserFindByEmail(ctx, nil, email)
 	if err != nil {
 		return nil, fmt.Errorf("check duplicate email: %w", err)
 	}
@@ -70,7 +70,7 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		return nil, ErrEmailExists
 	}
 
-	totalUsers, err := repository.Users.Count(ctx)
+	totalUsers, err := repository.UserCount(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("count users: %w", err)
 	}
@@ -91,14 +91,14 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		user.IsAdmin = true
 	}
 
-	if err := repository.Users.Create(ctx, user); err != nil {
+	if err := repository.UserCreate(ctx, nil, user); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, ErrEmailExists
 		}
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	if err := repository.Users.UpdateLastLogin(ctx, user.ID, now); err != nil {
+	if err := repository.UserUpdateLastLogin(ctx, nil, user.ID, now); err != nil {
 		return nil, fmt.Errorf("update last login: %w", err)
 	}
 	user.LastLoginAt = &now

@@ -140,7 +140,7 @@ func (s *Server) ReportTaskResult(ctx context.Context, result *schedulerpb.TaskR
 	taskID := uint(result.TaskID)
 
 	if result.Output != "" || result.ExitCode != 0 || result.Error != "" {
-		if err := repository.Tasks.UpdateResult(taskID, result.Output, int(result.ExitCode)); err != nil {
+		if err := repository.TaskUpdateResult(ctx, nil, taskID, result.Output, int(result.ExitCode)); err != nil {
 			log.Printf("[scheduler] update result for task %d: %v", taskID, err)
 		}
 	}
@@ -152,7 +152,7 @@ func (s *Server) ReportTaskResult(ctx context.Context, result *schedulerpb.TaskR
 		status = libdb.TaskStatusFailed
 	}
 
-	if err := repository.Tasks.UpdateStatus(taskID, status); err != nil {
+	if err := repository.TaskUpdateStatus(ctx, nil, taskID, status); err != nil {
 		log.Printf("[scheduler] update status for task %d: %v", taskID, err)
 	}
 
@@ -175,19 +175,20 @@ func (s *Server) SendHeartbeat(stream schedulerpb.SchedulerService_SendHeartbeat
 }
 
 func (s *Server) claimTasks(req *schedulerpb.WorkerPollRequest) ([]*schedulerpb.TaskAssignment, error) {
+	ctx := context.Background()
 	available := req.MaxTasks - req.RunningTasks
 	if available <= 0 {
 		return nil, nil
 	}
 
-	tasks, err := repository.Tasks.ListPendingForWorker(req.WorkerID, int(available))
+	tasks, err := repository.TaskListPendingForWorker(ctx, nil, req.WorkerID, int(available))
 	if err != nil {
 		return nil, err
 	}
 
 	assignments := make([]*schedulerpb.TaskAssignment, 0, len(tasks))
 	for _, task := range tasks {
-		ok, err := repository.Tasks.TransitionStatus(task.ID, libdb.TaskStatusPending, libdb.TaskStatusRunning)
+		ok, err := repository.TaskTransitionStatus(ctx, nil, task.ID, libdb.TaskStatusPending, libdb.TaskStatusRunning)
 		if err != nil {
 			log.Printf("[scheduler] transition task %d: %v", task.ID, err)
 			continue
@@ -267,7 +268,7 @@ func (s *Server) handleHeartbeat(hb *schedulerpb.Heartbeat) {
 		updates["name"] = name
 	}
 
-	if err := repository.Workers.Update(hb.WorkerID, updates); err != nil {
+	if err := repository.WorkerUpdate(context.Background(), nil, hb.WorkerID, updates); err != nil {
 		log.Printf("[scheduler] update worker %s heartbeat: %v", hb.WorkerID, err)
 	}
 

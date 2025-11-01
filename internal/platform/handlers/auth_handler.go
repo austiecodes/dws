@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/austiecodes/dws/internal/platform/services"
-	"github.com/austiecodes/dws/internal/platform/types"
 )
 
 const sessionUserKey = "user_id"
@@ -49,7 +48,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"user": types.NewUserResponse(user)})
+	c.JSON(http.StatusCreated, gin.H{"user": newUserJSON(user)})
 }
 
 func Login(c *gin.Context) {
@@ -76,7 +75,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"user": types.NewUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"user": newUserJSON(user)})
 }
 
 func Logout(c *gin.Context) {
@@ -106,5 +105,5 @@ func Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"user": types.NewUserResponse(user)})
+	c.JSON(http.StatusOK, gin.H{"user": newUserJSON(user)})
 }

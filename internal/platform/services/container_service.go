@@ -48,7 +48,7 @@ func (s *ContainerService) List(ctx context.Context, userID uint) ([]libdb.Conta
 		return nil, ErrServiceNotInitialised
 	}
 
-	containers, err := repository.Containers.ListByUser(ctx, userID)
+	containers, err := repository.ContainerListByUser(ctx, nil, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (s *ContainerService) syncContainerStatus(ctx context.Context, container *l
 	}
 
 	if container.Status != status.Status {
-		if err := repository.Containers.UpdateStatus(ctx, container.ContainerID, status.Status); err != nil {
+		if err := repository.ContainerUpdateStatus(ctx, nil, container.ContainerID, status.Status); err != nil {
 			return err
 		}
 		container.Status = status.Status
@@ -90,7 +90,7 @@ func (s *ContainerService) SyncAllContainers(ctx context.Context) error {
 		return ErrServiceNotInitialised
 	}
 
-	containers, err := repository.Containers.ListAll(ctx)
+	containers, err := repository.ContainerListAll(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *ContainerService) SyncAllContainers(ctx context.Context) error {
 			continue
 		}
 		if containers[i].Status != status.Status {
-			_ = repository.Containers.UpdateStatus(ctx, containers[i].ContainerID, status.Status)
+			_ = repository.ContainerUpdateStatus(ctx, nil, containers[i].ContainerID, status.Status)
 		}
 	}
 
@@ -200,7 +200,7 @@ func (s *ContainerService) CreateWithOptions(ctx context.Context, userID uint, o
 		Config:      datatypes.JSON(configJSON),
 	}
 
-	if err := repository.Containers.Create(ctx, record); err != nil {
+	if err := repository.ContainerCreate(ctx, nil, record); err != nil {
 		delCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
 		defer cancel()
 		_, _ = client.DeleteContainer(delCtx, &workerpb.ContainerRequest{ContainerID: resp.ContainerID, ContainerUUID: req.ContainerUUID})
@@ -215,7 +215,7 @@ func (s *ContainerService) allocatePortForWorker(ctx context.Context, worker *li
 	if worker != nil {
 		workerID = worker.ID
 	}
-	used, err := repository.Containers.ListHostPortsForWorker(ctx, workerID, s.cfg.SSHPortRangeStart, s.cfg.SSHPortRangeEnd)
+	used, err := repository.ContainerListHostPortsForWorker(ctx, nil, workerID, s.cfg.SSHPortRangeStart, s.cfg.SSHPortRangeEnd)
 	if err != nil {
 		return 0, fmt.Errorf("list used ports: %w", err)
 	}
@@ -276,7 +276,7 @@ func (s *ContainerService) Stop(ctx context.Context, userID uint, uuid string) e
 		}
 	}
 
-	return repository.Containers.UpdateStatus(ctx, container.ContainerID, status)
+	return repository.ContainerUpdateStatus(ctx, nil, container.ContainerID, status)
 }
 
 func (s *ContainerService) Start(ctx context.Context, userID uint, uuid string) error {
@@ -311,7 +311,7 @@ func (s *ContainerService) Start(ctx context.Context, userID uint, uuid string) 
 		}
 	}
 
-	return repository.Containers.UpdateStatus(ctx, container.ContainerID, status)
+	return repository.ContainerUpdateStatus(ctx, nil, container.ContainerID, status)
 }
 
 func (s *ContainerService) Delete(ctx context.Context, userID uint, uuid string) error {
@@ -352,9 +352,7 @@ func (s *ContainerService) Delete(ctx context.Context, userID uint, uuid string)
 		}
 	}
 
-	if err := tx.Model(&libdb.Container{}).
-		Where("uuid = ?", uuid).
-		Update("is_deleted", true).Error; err != nil {
+	if err := repository.ContainerSoftDelete(ctx, tx, uuid); err != nil {
 		return rollback(fmt.Errorf("soft delete from db: %w", err))
 	}
 
@@ -370,7 +368,7 @@ func (s *ContainerService) loadUserContainer(ctx context.Context, userID uint, u
 		return nil, nil, errors.New("uuid is required")
 	}
 
-	container, err := repository.Containers.GetByUUID(ctx, uuid)
+	container, err := repository.ContainerGetByUUID(ctx, nil, uuid)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get container: %w", err)
 	}
@@ -380,7 +378,7 @@ func (s *ContainerService) loadUserContainer(ctx context.Context, userID uint, u
 
 	var worker *libdb.Worker
 	if container.WorkerID != nil && *container.WorkerID != "" {
-		worker, err = repository.Workers.GetByID(*container.WorkerID)
+		worker, err = repository.WorkerGetByID(ctx, nil, *container.WorkerID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -393,7 +391,7 @@ func (s *ContainerService) loadUserContainer(ctx context.Context, userID uint, u
 }
 
 func (s *ContainerService) selectWorker(ctx context.Context) (*libdb.Worker, error) {
-	workers, err := repository.Workers.List()
+	workers, err := repository.WorkerList(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +403,7 @@ func (s *ContainerService) selectWorker(ctx context.Context) (*libdb.Worker, err
 		if worker.Status != libdb.WorkerStatusOnline {
 			continue
 		}
-		count, err := repository.Workers.CountContainers(worker.ID)
+		count, err := repository.WorkerCountContainers(ctx, nil, worker.ID)
 		if err != nil {
 			log.Printf("[platform] count containers for worker %s: %v", worker.ID, err)
 			continue

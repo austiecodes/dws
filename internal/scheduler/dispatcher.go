@@ -59,7 +59,7 @@ func (d *Dispatcher) dispatchPendingTasks() {
 	ctx := context.Background()
 
 	// Get current running task counts by type
-	runningCounts, err := repository.Tasks.GetRunningCountsByType()
+	runningCounts, err := repository.TaskGetRunningCountsByType(ctx, nil)
 	if err != nil {
 		log.Printf("[scheduler] failed to get running counts: %v", err)
 		return
@@ -90,7 +90,7 @@ func (d *Dispatcher) dispatchPendingTasks() {
 }
 
 func (d *Dispatcher) dispatchByType(ctx context.Context, taskType libdb.TaskType, limit int) {
-	pending, err := repository.Tasks.ListPendingByType(taskType, limit)
+	pending, err := repository.TaskListPendingByType(ctx, nil, taskType, limit)
 	if err != nil {
 		log.Printf("[scheduler] failed to list pending %s tasks: %v", taskType, err)
 		return
@@ -112,5 +112,5 @@ func (d *Dispatcher) dispatchByType(ctx context.Context, taskType libdb.TaskType
 }
 
 func (d *Dispatcher) markAsRunning(ctx context.Context, taskID uint) error {
-	return repository.Tasks.UpdateStatus(taskID, libdb.TaskStatusRunning)
+	return repository.TaskUpdateStatus(ctx, nil, taskID, libdb.TaskStatusRunning)
 }

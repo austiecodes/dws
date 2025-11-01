@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -9,21 +10,13 @@ import (
 	libdb "github.com/austiecodes/dws/internal/lib/db"
 )
 
-type TaskRepository struct{}
-
-var Tasks = &TaskRepository{}
-
-// Create inserts a new task.
-func (r *TaskRepository) Create(task *libdb.Task) error {
-	conn := libdb.MustInstance()
-	return conn.Create(task).Error
+func TaskCreate(ctx context.Context, db *gorm.DB, task *libdb.Task) error {
+	return dbWithContext(ctx, db).Create(task).Error
 }
 
-// GetByID retrieves a single task by ID, optionally preloading container info.
-func (r *TaskRepository) GetByID(id uint, preloadContainer bool) (*libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskGetByID(ctx context.Context, db *gorm.DB, id uint, preloadContainer bool) (*libdb.Task, error) {
 	var task libdb.Task
-	query := conn.Where("id = ?", id)
+	query := dbWithContext(ctx, db).Where("id = ?", id)
 	if preloadContainer {
 		query = query.Preload("Container")
 	}
@@ -36,11 +29,11 @@ func (r *TaskRepository) GetByID(id uint, preloadContainer bool) (*libdb.Task, e
 	return &task, nil
 }
 
-// ListByUser returns all tasks for a given user, ordered by creation time (newest first).
-func (r *TaskRepository) ListByUser(userID uint, preloadContainer bool) ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskListByUser(ctx context.Context, db *gorm.DB, userID uint, preloadContainer bool) ([]libdb.Task, error) {
 	var tasks []libdb.Task
-	query := conn.Where("user_id = ?", userID).Order("created_at DESC")
+	query := dbWithContext(ctx, db).
+		Where("user_id = ?", userID).
+		Order("created_at DESC")
 	if preloadContainer {
 		query = query.Preload("Container")
 	}
@@ -50,11 +43,9 @@ func (r *TaskRepository) ListByUser(userID uint, preloadContainer bool) ([]libdb
 	return tasks, nil
 }
 
-// ListPending retrieves all pending tasks ordered by priority (descending) then created_at (ascending).
-func (r *TaskRepository) ListPending() ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskListPending(ctx context.Context, db *gorm.DB) ([]libdb.Task, error) {
 	var tasks []libdb.Task
-	err := conn.
+	err := dbWithContext(ctx, db).
 		Where("status = ?", libdb.TaskStatusPending).
 		Order("priority DESC, created_at ASC").
 		Preload("Container").
@@ -62,11 +53,9 @@ func (r *TaskRepository) ListPending() ([]libdb.Task, error) {
 	return tasks, err
 }
 
-// ListPendingByType retrieves pending tasks of a specific type, limited by count.
-func (r *TaskRepository) ListPendingByType(taskType libdb.TaskType, limit int) ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskListPendingByType(ctx context.Context, db *gorm.DB, taskType libdb.TaskType, limit int) ([]libdb.Task, error) {
 	var tasks []libdb.Task
-	err := conn.
+	err := dbWithContext(ctx, db).
 		Where("status = ? AND task_type = ?", libdb.TaskStatusPending, taskType).
 		Order("priority DESC, created_at ASC").
 		Limit(limit).
@@ -75,11 +64,9 @@ func (r *TaskRepository) ListPendingByType(taskType libdb.TaskType, limit int) (
 	return tasks, err
 }
 
-// ListPendingForWorker retrieves pending tasks that target a specific worker.
-func (r *TaskRepository) ListPendingForWorker(workerID string, limit int) ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskListPendingForWorker(ctx context.Context, db *gorm.DB, workerID string, limit int) ([]libdb.Task, error) {
 	var tasks []libdb.Task
-	err := conn.
+	err := dbWithContext(ctx, db).
 		Joins("JOIN containers ON containers.id = tasks.container_id").
 		Where("tasks.status = ? AND containers.worker_id = ?", libdb.TaskStatusPending, workerID).
 		Order("tasks.priority DESC, tasks.created_at ASC").
@@ -89,31 +76,28 @@ func (r *TaskRepository) ListPendingForWorker(workerID string, limit int) ([]lib
 	return tasks, err
 }
 
-// CountRunningByType returns the count of running tasks for a specific type.
-func (r *TaskRepository) CountRunningByType(taskType libdb.TaskType) (int64, error) {
-	conn := libdb.MustInstance()
+func TaskCountRunningByType(ctx context.Context, db *gorm.DB, taskType libdb.TaskType) (int64, error) {
 	var count int64
-	err := conn.Model(&libdb.Task{}).
+	err := dbWithContext(ctx, db).
+		Model(&libdb.Task{}).
 		Where("status = ? AND task_type = ?", libdb.TaskStatusRunning, taskType).
 		Count(&count).Error
 	return count, err
 }
 
-// GetRunningCountsByType returns a map of task counts per type for running tasks.
-func (r *TaskRepository) GetRunningCountsByType() (map[libdb.TaskType]int, error) {
-	conn := libdb.MustInstance()
+func TaskGetRunningCountsByType(ctx context.Context, db *gorm.DB) (map[libdb.TaskType]int, error) {
 	type CountResult struct {
 		TaskType string
 		Count    int
 	}
 
 	var results []CountResult
-	err := conn.Model(&libdb.Task{}).
+	err := dbWithContext(ctx, db).
+		Model(&libdb.Task{}).
 		Select("task_type, COUNT(*) as count").
 		Where("status = ?", libdb.TaskStatusRunning).
 		Group("task_type").
 		Scan(&results).Error
-
 	if err != nil {
 		return nil, err
 	}
@@ -125,21 +109,19 @@ func (r *TaskRepository) GetRunningCountsByType() (map[libdb.TaskType]int, error
 	return counts, nil
 }
 
-// GetPendingCountsByType returns a map of task counts per type for pending tasks.
-func (r *TaskRepository) GetPendingCountsByType() (map[libdb.TaskType]int, error) {
-	conn := libdb.MustInstance()
+func TaskGetPendingCountsByType(ctx context.Context, db *gorm.DB) (map[libdb.TaskType]int, error) {
 	type CountResult struct {
 		TaskType string
 		Count    int
 	}
 
 	var results []CountResult
-	err := conn.Model(&libdb.Task{}).
+	err := dbWithContext(ctx, db).
+		Model(&libdb.Task{}).
 		Select("task_type, COUNT(*) as count").
 		Where("status = ?", libdb.TaskStatusPending).
 		Group("task_type").
 		Scan(&results).Error
-
 	if err != nil {
 		return nil, err
 	}
@@ -151,42 +133,36 @@ func (r *TaskRepository) GetPendingCountsByType() (map[libdb.TaskType]int, error
 	return counts, nil
 }
 
-// ListRunning retrieves all currently running tasks.
-func (r *TaskRepository) ListRunning() ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskListRunning(ctx context.Context, db *gorm.DB) ([]libdb.Task, error) {
 	var tasks []libdb.Task
-	err := conn.
+	err := dbWithContext(ctx, db).
 		Where("status = ?", libdb.TaskStatusRunning).
 		Preload("Container").
 		Find(&tasks).Error
 	return tasks, err
 }
 
-// UpdateStatus updates the status of a task.
-func (r *TaskRepository) UpdateStatus(id uint, status libdb.TaskStatus) error {
-	conn := libdb.MustInstance()
+func TaskUpdateStatus(ctx context.Context, db *gorm.DB, id uint, status libdb.TaskStatus) error {
+	dbctx := dbWithContext(ctx, db)
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":     status,
 		"updated_at": now,
 	}
 
-	// Set started_at when transitioning to running
 	if status == libdb.TaskStatusRunning {
 		updates["started_at"] = now
 	}
 
-	// Set completed_at when reaching a terminal state
 	if status == libdb.TaskStatusCompleted || status == libdb.TaskStatusFailed || status == libdb.TaskStatusKilled {
 		updates["completed_at"] = now
 	}
 
-	return conn.Model(&libdb.Task{}).Where("id = ?", id).Updates(updates).Error
+	return dbctx.Model(&libdb.Task{}).Where("id = ?", id).Updates(updates).Error
 }
 
-// TransitionStatus attempts to change the status from `from` to `to` and returns true if it succeeded.
-func (r *TaskRepository) TransitionStatus(id uint, from, to libdb.TaskStatus) (bool, error) {
-	conn := libdb.MustInstance()
+func TaskTransitionStatus(ctx context.Context, db *gorm.DB, id uint, from, to libdb.TaskStatus) (bool, error) {
+	dbctx := dbWithContext(ctx, db)
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":     to,
@@ -201,37 +177,33 @@ func (r *TaskRepository) TransitionStatus(id uint, from, to libdb.TaskStatus) (b
 		updates["completed_at"] = now
 	}
 
-	result := conn.Model(&libdb.Task{}).
+	result := dbctx.Model(&libdb.Task{}).
 		Where("id = ? AND status = ?", id, from).
 		Updates(updates)
 	return result.RowsAffected > 0, result.Error
 }
 
-// UpdateResult updates the output and exit code of a task.
-func (r *TaskRepository) UpdateResult(id uint, output string, exitCode int) error {
-	conn := libdb.MustInstance()
-	return conn.Model(&libdb.Task{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"output":    output,
-		"exit_code": exitCode,
-	}).Error
+func TaskUpdateResult(ctx context.Context, db *gorm.DB, id uint, output string, exitCode int) error {
+	return dbWithContext(ctx, db).Model(&libdb.Task{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"output":    output,
+			"exit_code": exitCode,
+		}).Error
 }
 
-// FindTimedOutTasks returns tasks that have been running for more than 30 minutes.
-func (r *TaskRepository) FindTimedOutTasks(timeout time.Duration) ([]libdb.Task, error) {
-	conn := libdb.MustInstance()
+func TaskFindTimedOut(ctx context.Context, db *gorm.DB, timeout time.Duration) ([]libdb.Task, error) {
 	var tasks []libdb.Task
 	cutoff := time.Now().Add(-timeout)
-	err := conn.
+	err := dbWithContext(ctx, db).
 		Where("status = ? AND started_at < ?", libdb.TaskStatusRunning, cutoff).
 		Preload("Container").
 		Find(&tasks).Error
 	return tasks, err
 }
 
-// CancelByUser allows a user to cancel their own pending or running task.
-func (r *TaskRepository) CancelByUser(taskID, userID uint) error {
-	conn := libdb.MustInstance()
-	result := conn.Model(&libdb.Task{}).
+func TaskCancelByUser(ctx context.Context, db *gorm.DB, taskID, userID uint) error {
+	result := dbWithContext(ctx, db).Model(&libdb.Task{}).
 		Where("id = ? AND user_id = ? AND status IN ?", taskID, userID, []libdb.TaskStatus{
 			libdb.TaskStatusPending,
 			libdb.TaskStatusRunning,

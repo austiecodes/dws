@@ -6,8 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/austiecodes/dws/internal/platform/services"
-	"github.com/austiecodes/dws/internal/platform/types"
 )
+
+type createWorkerRequest struct {
+	ID       string                 `json:"id" binding:"required,min=1,max=64"`
+	Name     string                 `json:"name" binding:"required,min=1,max=255"`
+	Address  string                 `json:"address" binding:"required,min=1,max=255"`
+	Metadata map[string]interface{} `json:"metadata"`
+}
+
+type updateWorkerRequest struct {
+	Name     *string                 `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
+	Address  *string                 `json:"address,omitempty" binding:"omitempty,min=1,max=255"`
+	Status   *string                 `json:"status,omitempty" binding:"omitempty,oneof=online offline maintenance"`
+	Metadata *map[string]interface{} `json:"metadata,omitempty"`
+}
 
 func CreateWorker(c *gin.Context) {
 	adminUser, ok := requireAdminUser(c)
@@ -15,7 +28,7 @@ func CreateWorker(c *gin.Context) {
 		return
 	}
 
-	var req types.CreateWorkerRequest
+	var req createWorkerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -43,7 +56,7 @@ func CreateWorker(c *gin.Context) {
 		}
 	}
 
-	response := types.NewWorkerResponse(worker)
+	response := newWorkerJSON(worker)
 	c.JSON(http.StatusCreated, gin.H{"worker": response})
 }
 
@@ -58,9 +71,8 @@ func ListWorkers(c *gin.Context) {
 		return
 	}
 
-	responses := types.NewWorkerListResponse(workers)
+	responses := newWorkerListJSON(workers)
 
-	// Optionally attach container counts
 	for i := range responses {
 		count, err := services.WorkersService.GetContainerCount(c.Request.Context(), responses[i].ID)
 		if err == nil {
@@ -94,7 +106,7 @@ func GetWorker(c *gin.Context) {
 		}
 	}
 
-	response := types.NewWorkerResponse(worker)
+	response := newWorkerJSON(worker)
 
 	// Attach container count
 	count, err := services.WorkersService.GetContainerCount(c.Request.Context(), worker.ID)
@@ -117,7 +129,7 @@ func UpdateWorker(c *gin.Context) {
 		return
 	}
 
-	var req types.UpdateWorkerRequest
+	var req updateWorkerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

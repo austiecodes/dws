@@ -56,7 +56,7 @@ func (w *TimeoutWatcher) checkTimeouts() {
 	ctx := context.Background()
 
 	// Find tasks that have exceeded the 30-minute hard limit
-	timedOut, err := repository.Tasks.FindTimedOutTasks(MaxTaskDuration)
+	timedOut, err := repository.TaskFindTimedOut(ctx, nil, MaxTaskDuration)
 	if err != nil {
 		log.Printf("[worker] failed to find timed-out tasks: %v", err)
 		return
@@ -68,7 +68,7 @@ func (w *TimeoutWatcher) checkTimeouts() {
 	}
 
 	// Mock notification: check for tasks approaching timeout
-	approaching, err := repository.Tasks.FindTimedOutTasks(MaxTaskDuration - NotificationDuration)
+	approaching, err := repository.TaskFindTimedOut(ctx, nil, MaxTaskDuration-NotificationDuration)
 	if err != nil {
 		log.Printf("[worker] failed to find approaching-timeout tasks: %v", err)
 		return
@@ -90,10 +90,10 @@ func (w *TimeoutWatcher) checkTimeouts() {
 
 func (w *TimeoutWatcher) killTask(ctx context.Context, task libdb.Task) {
 	output := "Task killed by system: exceeded maximum runtime of 30 minutes"
-	if err := repository.Tasks.UpdateResult(task.ID, output, -1); err != nil {
+	if err := repository.TaskUpdateResult(ctx, nil, task.ID, output, -1); err != nil {
 		log.Printf("[worker] failed to update task %d result: %v", task.ID, err)
 	}
-	if err := repository.Tasks.UpdateStatus(task.ID, libdb.TaskStatusKilled); err != nil {
+	if err := repository.TaskUpdateStatus(ctx, nil, task.ID, libdb.TaskStatusKilled); err != nil {
 		log.Printf("[worker] failed to kill task %d: %v", task.ID, err)
 	}
 }

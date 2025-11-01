@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/austiecodes/dws/internal/platform/services"
-	"github.com/austiecodes/dws/internal/platform/types"
 )
 
 func ListUsersAdmin(c *gin.Context) {
@@ -28,10 +27,10 @@ func ListUsersAdmin(c *gin.Context) {
 		}
 	}
 
-	responses := make([]types.UserResponse, 0, len(users))
+	responses := make([]userJSON, 0, len(users))
 	for i := range users {
 		user := users[i]
-		responses = append(responses, types.NewUserResponse(&user))
+		responses = append(responses, newUserJSON(&user))
 	}
 
 	c.JSON(http.StatusOK, gin.H{"users": responses})

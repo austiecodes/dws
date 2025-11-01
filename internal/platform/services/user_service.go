@@ -20,7 +20,7 @@ type UserService struct{}
 var UsersService = &UserService{}
 
 func (s *UserService) requireAdmin(ctx context.Context, userID uint) error {
-	user, err := repository.Users.FindByID(ctx, userID)
+	user, err := repository.UserFindByID(ctx, nil, userID)
 	if err != nil {
 		return fmt.Errorf("lookup user: %w", err)
 	}
@@ -34,7 +34,7 @@ func (s *UserService) List(ctx context.Context, requesterID uint) ([]libdb.User,
 	if err := s.requireAdmin(ctx, requesterID); err != nil {
 		return nil, err
 	}
-	users, err := repository.Users.List(ctx)
+	users, err := repository.UserList(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
@@ -46,7 +46,7 @@ func (s *UserService) SetAdmin(ctx context.Context, requesterID, targetID uint, 
 		return err
 	}
 
-	target, err := repository.Users.FindByID(ctx, targetID)
+	target, err := repository.UserFindByID(ctx, nil, targetID)
 	if err != nil {
 		return fmt.Errorf("lookup target user: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s *UserService) SetAdmin(ctx context.Context, requesterID, targetID uint, 
 	}
 
 	if !isAdmin && target.IsAdmin {
-		adminCount, err := repository.Users.CountAdmins(ctx)
+		adminCount, err := repository.UserCountAdmins(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("count admins: %w", err)
 		}
@@ -64,7 +64,7 @@ func (s *UserService) SetAdmin(ctx context.Context, requesterID, targetID uint, 
 		}
 	}
 
-	if err := repository.Users.SetAdmin(ctx, targetID, isAdmin); err != nil {
+	if err := repository.UserSetAdmin(ctx, nil, targetID, isAdmin); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrUserNotFound
 		}

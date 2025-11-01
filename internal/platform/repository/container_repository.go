@@ -3,109 +3,93 @@ package repository
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	libdb "github.com/austiecodes/dws/internal/lib/db"
 )
 
-type ContainerRepository struct{}
-
-var Containers = &ContainerRepository{}
-
-func (r *ContainerRepository) Create(ctx context.Context, container *libdb.Container) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).Create(container).Error
+func ContainerCreate(ctx context.Context, db *gorm.DB, container *libdb.Container) error {
+	return dbWithContext(ctx, db).Create(container).Error
 }
 
-func (r *ContainerRepository) ListByUser(ctx context.Context, userID uint) ([]libdb.Container, error) {
-	conn := libdb.MustInstance()
+func ContainerListByUser(ctx context.Context, db *gorm.DB, userID uint) ([]libdb.Container, error) {
 	var containers []libdb.Container
-	if err := conn.WithContext(ctx).
+	err := dbWithContext(ctx, db).
 		Where("user_id = ? AND is_deleted = ?", userID, false).
 		Order("created_at DESC").
-		Find(&containers).Error; err != nil {
-		return nil, err
-	}
-	return containers, nil
+		Find(&containers).Error
+	return containers, err
 }
 
-func (r *ContainerRepository) ListHostPorts(ctx context.Context, start, end int) (map[int]struct{}, error) {
-	conn := libdb.MustInstance()
+func ContainerListHostPorts(ctx context.Context, db *gorm.DB, start, end int) (map[int]struct{}, error) {
 	var ports []int
-	if err := conn.WithContext(ctx).
+	if err := dbWithContext(ctx, db).
 		Model(&libdb.Container{}).
 		Where("host_ssh_port BETWEEN ? AND ?", start, end).
 		Pluck("host_ssh_port", &ports).Error; err != nil {
 		return nil, err
 	}
-	used := make(map[int]struct{}, len(ports))
-	for _, port := range ports {
-		used[port] = struct{}{}
-	}
-	return used, nil
+	return asSet(ports), nil
 }
 
-func (r *ContainerRepository) ListHostPortsForWorker(ctx context.Context, workerID string, start, end int) (map[int]struct{}, error) {
-	conn := libdb.MustInstance()
-	var ports []int
-	query := conn.WithContext(ctx).
+func ContainerListHostPortsForWorker(ctx context.Context, db *gorm.DB, workerID string, start, end int) (map[int]struct{}, error) {
+	query := dbWithContext(ctx, db).
 		Model(&libdb.Container{}).
 		Where("host_ssh_port BETWEEN ? AND ?", start, end)
 	if workerID != "" {
 		query = query.Where("worker_id = ?", workerID)
 	}
+	var ports []int
 	if err := query.Pluck("host_ssh_port", &ports).Error; err != nil {
 		return nil, err
 	}
-	used := make(map[int]struct{}, len(ports))
-	for _, port := range ports {
-		used[port] = struct{}{}
-	}
-	return used, nil
+	return asSet(ports), nil
 }
 
-func (r *ContainerRepository) UpdateStatus(ctx context.Context, containerID string, status string) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).
+func ContainerUpdateStatus(ctx context.Context, db *gorm.DB, containerID string, status string) error {
+	return dbWithContext(ctx, db).
 		Model(&libdb.Container{}).
 		Where("container_id = ?", containerID).
 		Update("status", status).Error
 }
 
-func (r *ContainerRepository) ListAll(ctx context.Context) ([]libdb.Container, error) {
-	conn := libdb.MustInstance()
+func ContainerListAll(ctx context.Context, db *gorm.DB) ([]libdb.Container, error) {
 	var containers []libdb.Container
-	if err := conn.WithContext(ctx).Find(&containers).Error; err != nil {
-		return nil, err
-	}
-	return containers, nil
+	err := dbWithContext(ctx, db).Find(&containers).Error
+	return containers, err
 }
 
-func (r *ContainerRepository) GetByID(ctx context.Context, id uint) (*libdb.Container, error) {
-	conn := libdb.MustInstance()
+func ContainerGetByID(ctx context.Context, db *gorm.DB, id uint) (*libdb.Container, error) {
 	var container libdb.Container
-	if err := conn.WithContext(ctx).Where("id = ?", id).First(&container).Error; err != nil {
+	if err := dbWithContext(ctx, db).Where("id = ?", id).First(&container).Error; err != nil {
 		return nil, err
 	}
 	return &container, nil
 }
 
-func (r *ContainerRepository) GetByUUID(ctx context.Context, uuid string) (*libdb.Container, error) {
-	conn := libdb.MustInstance()
+func ContainerGetByUUID(ctx context.Context, db *gorm.DB, uuid string) (*libdb.Container, error) {
 	var container libdb.Container
-	if err := conn.WithContext(ctx).Where("uuid = ?", uuid).First(&container).Error; err != nil {
+	if err := dbWithContext(ctx, db).Where("uuid = ?", uuid).First(&container).Error; err != nil {
 		return nil, err
 	}
 	return &container, nil
 }
 
-func (r *ContainerRepository) SoftDelete(ctx context.Context, uuid string) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).
+func ContainerSoftDelete(ctx context.Context, db *gorm.DB, uuid string) error {
+	return dbWithContext(ctx, db).
 		Model(&libdb.Container{}).
 		Where("uuid = ?", uuid).
 		Update("is_deleted", true).Error
 }
 
-func (r *ContainerRepository) HardDelete(ctx context.Context, uuid string) error {
-	conn := libdb.MustInstance()
-	return conn.WithContext(ctx).Where("uuid = ?", uuid).Delete(&libdb.Container{}).Error
+func ContainerHardDelete(ctx context.Context, db *gorm.DB, uuid string) error {
+	return dbWithContext(ctx, db).Where("uuid = ?", uuid).Delete(&libdb.Container{}).Error
+}
+
+func asSet(values []int) map[int]struct{} {
+	used := make(map[int]struct{}, len(values))
+	for _, v := range values {
+		used[v] = struct{}{}
+	}
+	return used
 }
