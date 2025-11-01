@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ContainersPage from "./pages/ContainersPage";
 import TasksPage from "./pages/TasksPage";
+import WorkersPage from "./pages/WorkersPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -26,6 +27,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="containers" element={<ContainersPage />} />
               <Route path="tasks" element={<TasksPage />} />
+              <Route path="workers" element={<WorkersPage />} />
             </Route>
           </Route>
         </Routes>

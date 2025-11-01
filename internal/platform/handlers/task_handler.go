@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	libdb "github.com/austiecodes/dws/internal/lib/db"
 	"github.com/austiecodes/dws/internal/platform/services"
 	"github.com/austiecodes/dws/internal/platform/types"
 )
@@ -27,6 +28,7 @@ func CreateTask(c *gin.Context) {
 		userID,
 		req.ContainerID,
 		req.Command,
+		libdb.TaskType(req.TaskType),
 		req.ExpectedDuration,
 		req.Priority,
 	)
@@ -118,4 +120,14 @@ func CancelTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "task cancelled"})
+}
+
+func GetQueueStatus(c *gin.Context) {
+	stats, err := services.Tasks.GetQueueStatistics(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
 }

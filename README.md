@@ -43,10 +43,17 @@
 ### 2. 初始化数据库
 
 ```bash
+# 使用辅助脚本
+./docs/sql/scripts/init_db.sh
+
+# 或手动执行
 psql -h localhost -p 5432 -U dws -d dws
-\i docs/sql/users.sql
-\i docs/sql/containers.sql
-\i docs/sql/tasks.sql
+\i docs/sql/schema/01_users.sql
+\i docs/sql/schema/02_containers.sql
+\i docs/sql/schema/03_tasks.sql
+\i docs/sql/migrations/20251030_add_soft_delete.sql
+\i docs/sql/migrations/20251030_add_task_type.sql
+\i docs/sql/migrations/20251031_add_jsonb_fields.sql
 ```
 
 ### 3. 配置应用
@@ -130,11 +137,10 @@ dws/
 
 ## 文档
 
-- [任务系统设计](docs/TASK_SYSTEM.md)
-- [任务快速开始](docs/TASK_QUICKSTART.md)
-- [容器生命周期](docs/CONTAINER_LIFECYCLE.md)
-- [容器密码管理](docs/CONTAINER_PASSWORD.md)
-- [软删除机制](docs/SOFT_DELETE.md)
+- SQL Schema: `docs/sql/schema/`
+- SQL Migrations: `docs/sql/migrations/`
+- Docker 容器管理: `internal/platform/DOCKER_MANAGE.md`
+- Agents 使用指南: `AGENTS.md`
 
 ## 技术栈
 

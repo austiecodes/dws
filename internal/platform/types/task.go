@@ -9,6 +9,7 @@ import (
 type CreateTaskRequest struct {
 	ContainerID      uint   `json:"container_id" binding:"required"`
 	Command          string `json:"command" binding:"required"`
+	TaskType         string `json:"task_type" binding:"required,oneof=cpu gpu"`
 	ExpectedDuration int    `json:"expected_duration" binding:"required,min=1"` // seconds
 	Priority         int    `json:"priority"`
 }
@@ -19,6 +20,7 @@ type TaskResponse struct {
 	ContainerID      uint               `json:"container_id"`
 	Command          string             `json:"command"`
 	Status           string             `json:"status"`
+	TaskType         string             `json:"task_type"`
 	ExpectedDuration int                `json:"expected_duration"`
 	Priority         int                `json:"priority"`
 	StartedAt        *string            `json:"started_at,omitempty"`
@@ -36,6 +38,7 @@ func NewTaskResponse(task *libdb.Task) TaskResponse {
 		ContainerID:      task.ContainerID,
 		Command:          task.Command,
 		Status:           string(task.Status),
+		TaskType:         string(task.TaskType),
 		ExpectedDuration: task.ExpectedDuration,
 		Priority:         task.Priority,
 		Output:           task.Output,
@@ -67,4 +70,22 @@ func NewTaskListResponse(tasks []libdb.Task) []TaskResponse {
 		items = append(items, NewTaskResponse(&tasks[i]))
 	}
 	return items
+}
+
+// QueueStatistics represents the system-wide task queue status.
+type QueueStatistics struct {
+	Running struct {
+		CPU   int `json:"cpu"`
+		GPU   int `json:"gpu"`
+		Total int `json:"total"`
+	} `json:"running"`
+	Pending struct {
+		CPU   int `json:"cpu"`
+		GPU   int `json:"gpu"`
+		Total int `json:"total"`
+	} `json:"pending"`
+	Limits struct {
+		CPU int `json:"cpu"`
+		GPU int `json:"gpu"`
+	} `json:"limits"`
 }

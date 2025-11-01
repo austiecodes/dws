@@ -86,7 +86,11 @@ func openPostgres(cfg libconfig.DatabaseConfig) (*gorm.DB, error) {
 		cfg.SSLMode,
 	)
 
-	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// 使用 Postgres 驱动配置，禁用二进制参数以避免类型编码问题
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true, // 使用文本协议而不是二进制协议，避免类型转换问题
+	}), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("open postgres connection: %w", err)
 	}

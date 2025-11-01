@@ -24,7 +24,7 @@ func InitTaskService() {
 }
 
 // Create validates and creates a new task for the user.
-func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint, command string, expectedDuration, priority int) (*libdb.Task, error) {
+func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint, command string, taskType libdb.TaskType, expectedDuration, priority int) (*libdb.Task, error) {
 	// Verify the container exists and belongs to the user
 	container, err := repository.Containers.GetByID(ctx, containerID)
 	if err != nil {
@@ -47,6 +47,7 @@ func (s *TaskService) Create(ctx context.Context, userID uint, containerID uint,
 		ContainerID:      containerID,
 		Command:          command,
 		Status:           libdb.TaskStatusPending,
+		TaskType:         taskType,
 		ExpectedDuration: expectedDuration,
 		Priority:         priority,
 	}
@@ -81,4 +82,36 @@ func (s *TaskService) List(ctx context.Context, userID uint) ([]libdb.Task, erro
 // Cancel allows a user to cancel their own task (only if pending or running).
 func (s *TaskService) Cancel(ctx context.Context, taskID, userID uint) error {
 	return repository.Tasks.CancelByUser(taskID, userID)
+}
+
+// GetQueueStatistics returns system-wide task queue statistics.
+func (s *TaskService) GetQueueStatistics(ctx context.Context) (map[string]interface{}, error) {
+	runningCounts, err := repository.Tasks.GetRunningCountsByType()
+	if err != nil {
+		return nil, err
+	}
+
+	pendingCounts, err := repository.Tasks.GetPendingCountsByType()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := map[string]interface{}{
+		"running": map[string]int{
+			"cpu":   runningCounts[libdb.TaskTypeCPU],
+			"gpu":   runningCounts[libdb.TaskTypeGPU],
+			"total": runningCounts[libdb.TaskTypeCPU] + runningCounts[libdb.TaskTypeGPU],
+		},
+		"pending": map[string]int{
+			"cpu":   pendingCounts[libdb.TaskTypeCPU],
+			"gpu":   pendingCounts[libdb.TaskTypeGPU],
+			"total": pendingCounts[libdb.TaskTypeCPU] + pendingCounts[libdb.TaskTypeGPU],
+		},
+		"limits": map[string]int{
+			"cpu": 3,
+			"gpu": 1,
+		},
+	}
+
+	return stats, nil
 }

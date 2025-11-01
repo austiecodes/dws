@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	libdb "github.com/austiecodes/dws/internal/lib/db"
@@ -12,8 +13,9 @@ import (
 )
 
 type Executor struct {
-	interval time.Duration
-	stopCh   chan struct{}
+	interval       time.Duration
+	stopCh         chan struct{}
+	executingTasks sync.Map // taskID -> true, prevents duplicate execution
 }
 
 func NewExecutor(interval time.Duration) *Executor {
@@ -63,15 +65,28 @@ func (e *Executor) processRunningTasks() {
 		return
 	}
 
-	log.Printf("[worker] processing %d running task(s)", len(running))
-
+	dispatched := 0
 	for _, task := range running {
-		// Execute each task in a goroutine (non-blocking)
+		// Skip if already executing
+		if _, exists := e.executingTasks.Load(task.ID); exists {
+			continue
+		}
+
+		// Mark as executing and launch goroutine
+		e.executingTasks.Store(task.ID, true)
+		dispatched++
 		go e.executeTask(ctx, task)
+	}
+
+	if dispatched > 0 {
+		log.Printf("[worker] dispatched %d task(s) for execution", dispatched)
 	}
 }
 
 func (e *Executor) executeTask(ctx context.Context, task libdb.Task) {
+	// Ensure we always remove the executing flag when done
+	defer e.executingTasks.Delete(task.ID)
+
 	log.Printf("[worker] executing task %d: container=%s command=%s", task.ID, task.Container.ContainerID, task.Command)
 
 	mgr := libdocker.MustInstance()

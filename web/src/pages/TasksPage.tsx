@@ -8,20 +8,23 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../context/auth";
 import { ApiError } from "../lib/api";
 import { fetchContainers } from "../lib/containers";
-import { createTask, cancelTask, fetchTasks } from "../lib/tasks";
-import type { Container, Task } from "../types";
+import { createTask, cancelTask, fetchTasks, fetchQueueStatistics } from "../lib/tasks";
+import type { Container, Task, TaskType, QueueStatistics } from "../types";
 
 export default function TasksPage() {
   const { user, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [containers, setContainers] = useState<Container[]>([]);
+  const [queueStats, setQueueStats] = useState<QueueStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedContainerId, setSelectedContainerId] = useState<number>(0);
   const [command, setCommand] = useState("");
-  const [expectedDuration, setExpectedDuration] = useState<number>(300); // 5 minutes default
+  const [taskType, setTaskType] = useState<TaskType>("cpu");
+  const [hours, setHours] = useState<number>(0);
+  const [minutes, setMinutes] = useState<number>(5);
   const [priority, setPriority] = useState<number>(0);
 
   useEffect(() => {
@@ -32,12 +35,14 @@ export default function TasksPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const [fetchedContainers, fetchedTasks] = await Promise.all([
+        const [fetchedContainers, fetchedTasks, stats] = await Promise.all([
           fetchContainers(),
           fetchTasks(),
+          fetchQueueStatistics(),
         ]);
         setContainers(fetchedContainers);
         setTasks(fetchedTasks);
+        setQueueStats(stats);
         if (fetchedContainers.length > 0) {
           setSelectedContainerId(fetchedContainers[0].id);
         }
@@ -58,18 +63,32 @@ export default function TasksPage() {
       return;
     }
 
+    const expectedDuration = hours * 3600 + minutes * 60;
+    if (expectedDuration <= 0) {
+      setError("预期时长必须大于 0");
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
       const task = await createTask({
         container_id: selectedContainerId,
         command: command.trim(),
+        task_type: taskType,
         expected_duration: expectedDuration,
         priority,
       });
       setTasks((list) => [task, ...list]);
+      
+      // Refresh queue stats
+      const stats = await fetchQueueStatistics();
+      setQueueStats(stats);
+      
+      // Reset form
       setCommand("");
-      setExpectedDuration(300);
+      setHours(0);
+      setMinutes(5);
       setPriority(0);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -89,6 +108,10 @@ export default function TasksPage() {
       setTasks((list) =>
         list.map((t) => (t.id === taskId ? { ...t, status: "killed" as const } : t))
       );
+      
+      // Refresh queue stats
+      const stats = await fetchQueueStatistics();
+      setQueueStats(stats);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -124,10 +147,29 @@ export default function TasksPage() {
   };
 
   const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} 分钟`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours} 小时 ${minutes % 60} 分钟`;
+    const mins = Math.floor(seconds / 60);
+    const hrs = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    
+    if (hrs === 0) return `${mins} 分钟`;
+    if (remainMins === 0) return `${hrs} 小时`;
+    return `${hrs} 小时 ${remainMins} 分钟`;
+  };
+
+  const getTaskTypeBadge = (type: TaskType) => {
+    const colors = {
+      cpu: "bg-blue-100 text-blue-800",
+      gpu: "bg-purple-100 text-purple-800",
+    };
+    const labels = {
+      cpu: "CPU",
+      gpu: "GPU",
+    };
+    return (
+      <span className={`px-2 py-1 rounded text-xs font-medium ${colors[type]}`}>
+        {labels[type]}
+      </span>
+    );
   };
 
   const formatTimestamp = (ts?: string) => {
@@ -144,6 +186,55 @@ export default function TasksPage() {
           <AlertTitle>错误</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {queueStats && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>系统队列状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">CPU 任务</h3>
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <span className="text-gray-600">运行中:</span>{" "}
+                    <span className="font-medium">
+                      {queueStats.running.cpu} / {queueStats.limits.cpu}
+                    </span>
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-gray-600">等待中:</span>{" "}
+                    <span className="font-medium">{queueStats.pending.cpu}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">GPU 任务</h3>
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <span className="text-gray-600">运行中:</span>{" "}
+                    <span className="font-medium">
+                      {queueStats.running.gpu} / {queueStats.limits.gpu}
+                    </span>
+                  </p>
+                  <p className="text-sm">
+                    <span className="text-gray-600">等待中:</span>{" "}
+                    <span className="font-medium">{queueStats.pending.gpu}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            {(queueStats.pending.cpu > 0 || queueStats.pending.gpu > 0) && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="text-sm text-yellow-800">
+                  系统当前有 {queueStats.pending.total} 个任务在队列中等待，请耐心等待调度。
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Card className="mb-6">
@@ -187,17 +278,48 @@ export default function TasksPage() {
               </div>
 
               <div>
-                <Label htmlFor="duration">预期时长（秒）</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  value={expectedDuration}
-                  onChange={(e) => setExpectedDuration(Number(e.target.value))}
-                  min={1}
-                  required
-                />
+                <Label htmlFor="taskType">任务类型</Label>
+                <select
+                  id="taskType"
+                  value={taskType}
+                  onChange={(e) => setTaskType(e.target.value as TaskType)}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="cpu">CPU 任务（最多 3 个并发）</option>
+                  <option value="gpu">GPU 任务（独占执行）</option>
+                </select>
                 <p className="text-sm text-gray-500 mt-1">
-                  当前设置: {formatDuration(expectedDuration)}
+                  GPU 任务同时只能运行 1 个，CPU 任务最多可同时运行 3 个
+                </p>
+              </div>
+
+              <div>
+                <Label>预期时长</Label>
+                <div className="flex gap-3 items-center">
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="小时"
+                      value={hours}
+                      onChange={(e) => setHours(Number(e.target.value))}
+                      min={0}
+                    />
+                  </div>
+                  <span className="text-gray-500">小时</span>
+                  <div className="flex-1">
+                    <Input
+                      type="number"
+                      placeholder="分钟"
+                      value={minutes}
+                      onChange={(e) => setMinutes(Number(e.target.value))}
+                      min={0}
+                      max={59}
+                    />
+                  </div>
+                  <span className="text-gray-500">分钟</span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  总计: {formatDuration(hours * 3600 + minutes * 60)}
                 </p>
               </div>
 
@@ -238,6 +360,7 @@ export default function TasksPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="font-medium">任务 #{task.id}</span>
                         {getStatusBadge(task.status)}
+                        {getTaskTypeBadge(task.task_type)}
                         {task.priority > 0 && (
                           <span className="text-xs text-gray-500">
                             优先级: {task.priority}

@@ -62,6 +62,81 @@ func (r *TaskRepository) ListPending() ([]libdb.Task, error) {
 	return tasks, err
 }
 
+// ListPendingByType retrieves pending tasks of a specific type, limited by count.
+func (r *TaskRepository) ListPendingByType(taskType libdb.TaskType, limit int) ([]libdb.Task, error) {
+	conn := libdb.MustInstance()
+	var tasks []libdb.Task
+	err := conn.
+		Where("status = ? AND task_type = ?", libdb.TaskStatusPending, taskType).
+		Order("priority DESC, created_at ASC").
+		Limit(limit).
+		Preload("Container").
+		Find(&tasks).Error
+	return tasks, err
+}
+
+// CountRunningByType returns the count of running tasks for a specific type.
+func (r *TaskRepository) CountRunningByType(taskType libdb.TaskType) (int64, error) {
+	conn := libdb.MustInstance()
+	var count int64
+	err := conn.Model(&libdb.Task{}).
+		Where("status = ? AND task_type = ?", libdb.TaskStatusRunning, taskType).
+		Count(&count).Error
+	return count, err
+}
+
+// GetRunningCountsByType returns a map of task counts per type for running tasks.
+func (r *TaskRepository) GetRunningCountsByType() (map[libdb.TaskType]int, error) {
+	conn := libdb.MustInstance()
+	type CountResult struct {
+		TaskType string
+		Count    int
+	}
+
+	var results []CountResult
+	err := conn.Model(&libdb.Task{}).
+		Select("task_type, COUNT(*) as count").
+		Where("status = ?", libdb.TaskStatusRunning).
+		Group("task_type").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[libdb.TaskType]int)
+	for _, r := range results {
+		counts[libdb.TaskType(r.TaskType)] = r.Count
+	}
+	return counts, nil
+}
+
+// GetPendingCountsByType returns a map of task counts per type for pending tasks.
+func (r *TaskRepository) GetPendingCountsByType() (map[libdb.TaskType]int, error) {
+	conn := libdb.MustInstance()
+	type CountResult struct {
+		TaskType string
+		Count    int
+	}
+
+	var results []CountResult
+	err := conn.Model(&libdb.Task{}).
+		Select("task_type, COUNT(*) as count").
+		Where("status = ?", libdb.TaskStatusPending).
+		Group("task_type").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[libdb.TaskType]int)
+	for _, r := range results {
+		counts[libdb.TaskType(r.TaskType)] = r.Count
+	}
+	return counts, nil
+}
+
 // ListRunning retrieves all currently running tasks.
 func (r *TaskRepository) ListRunning() ([]libdb.Task, error) {
 	conn := libdb.MustInstance()

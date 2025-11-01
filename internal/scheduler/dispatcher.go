@@ -9,6 +9,13 @@ import (
 	"github.com/austiecodes/dws/internal/platform/repository"
 )
 
+const (
+	// MaxConcurrentCPU defines the maximum number of concurrent CPU tasks.
+	MaxConcurrentCPU = 3
+	// MaxConcurrentGPU defines the maximum number of concurrent GPU tasks (exclusive).
+	MaxConcurrentGPU = 1
+)
+
 type Dispatcher struct {
 	interval time.Duration
 	stopCh   chan struct{}
@@ -51,10 +58,41 @@ func (d *Dispatcher) run() {
 func (d *Dispatcher) dispatchPendingTasks() {
 	ctx := context.Background()
 
-	// Fetch all pending tasks (already ordered by priority DESC, created_at ASC)
-	pending, err := repository.Tasks.ListPending()
+	// Get current running task counts by type
+	runningCounts, err := repository.Tasks.GetRunningCountsByType()
 	if err != nil {
-		log.Printf("[scheduler] failed to list pending tasks: %v", err)
+		log.Printf("[scheduler] failed to get running counts: %v", err)
+		return
+	}
+
+	runningCPU := runningCounts[libdb.TaskTypeCPU]
+	runningGPU := runningCounts[libdb.TaskTypeGPU]
+
+	// Calculate available slots
+	availableCPU := MaxConcurrentCPU - runningCPU
+	availableGPU := MaxConcurrentGPU - runningGPU
+
+	log.Printf("[scheduler] running: CPU=%d/%d, GPU=%d/%d", runningCPU, MaxConcurrentCPU, runningGPU, MaxConcurrentGPU)
+
+	if availableCPU <= 0 && availableGPU <= 0 {
+		return // No available slots
+	}
+
+	// Dispatch CPU tasks if slots available
+	if availableCPU > 0 {
+		d.dispatchByType(ctx, libdb.TaskTypeCPU, availableCPU)
+	}
+
+	// Dispatch GPU tasks if slots available
+	if availableGPU > 0 {
+		d.dispatchByType(ctx, libdb.TaskTypeGPU, availableGPU)
+	}
+}
+
+func (d *Dispatcher) dispatchByType(ctx context.Context, taskType libdb.TaskType, limit int) {
+	pending, err := repository.Tasks.ListPendingByType(taskType, limit)
+	if err != nil {
+		log.Printf("[scheduler] failed to list pending %s tasks: %v", taskType, err)
 		return
 	}
 
@@ -62,15 +100,13 @@ func (d *Dispatcher) dispatchPendingTasks() {
 		return
 	}
 
-	log.Printf("[scheduler] found %d pending task(s)", len(pending))
+	log.Printf("[scheduler] dispatching %d %s task(s)", len(pending), taskType)
 
-	// Simple strategy: mark all pending as running immediately
-	// In a real system, you might check worker capacity here
 	for _, task := range pending {
 		if err := d.markAsRunning(ctx, task.ID); err != nil {
-			log.Printf("[scheduler] failed to mark task %d as running: %v", task.ID, err)
+			log.Printf("[scheduler] failed to dispatch %s task %d: %v", taskType, task.ID, err)
 		} else {
-			log.Printf("[scheduler] dispatched task %d (container=%d, priority=%d)", task.ID, task.ContainerID, task.Priority)
+			log.Printf("[scheduler] dispatched %s task %d (container=%d, priority=%d)", taskType, task.ID, task.ContainerID, task.Priority)
 		}
 	}
 }

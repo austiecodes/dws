@@ -25,6 +25,9 @@ export default function App() {
                 <Button variant="ghost" asChild>
                   <Link to="/tasks">任务</Link>
                 </Button>
+                <Button variant="ghost" asChild>
+                  <Link to="/workers">Workers</Link>
+                </Button>
               </>
             ) : null}
             {user ? (

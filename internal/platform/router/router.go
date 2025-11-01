@@ -29,6 +29,7 @@ func Setup(engine *gin.Engine, cfg *libconfig.AppConfig) error {
 
 	services.InitContainerService(cfg.Docker)
 	services.InitTaskService()
+	services.InitWorkerService()
 
 	api := engine.Group("/api/v1")
 	auth := api.Group("/auth")
@@ -52,8 +53,18 @@ func Setup(engine *gin.Engine, cfg *libconfig.AppConfig) error {
 	tasks.Use(handlers.RequireAuthMiddleware())
 	tasks.POST("", handlers.CreateTask)
 	tasks.GET("", handlers.ListTasks)
+	tasks.GET("/queue", handlers.GetQueueStatus) // Global queue status
 	tasks.GET("/:id", handlers.GetTask)
 	tasks.POST("/:id/cancel", handlers.CancelTask)
+
+	// Worker endpoints (list is public to authenticated users, CUD requires admin)
+	workers := api.Group("/workers")
+	workers.Use(handlers.RequireAuthMiddleware())
+	workers.GET("", handlers.ListWorkers)
+	workers.GET("/:id", handlers.GetWorker)
+	workers.POST("", handlers.CreateWorker)
+	workers.PUT("/:id", handlers.UpdateWorker)
+	workers.DELETE("/:id", handlers.DeleteWorker)
 
 	return nil
 }

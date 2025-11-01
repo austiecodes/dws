@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 
 	libconfig "github.com/austiecodes/dws/internal/lib/config"
 	libdb "github.com/austiecodes/dws/internal/lib/db"
@@ -125,14 +127,32 @@ func (s *ContainerService) CreateWithOptions(ctx context.Context, userID uint, o
 		password = "dws"
 	}
 
-	result, err := manager.CreateSSHContainer(ctx, libdocker.CreateContainerOptions{
+	// 构建 Docker 创建参数
+	dockerOpts := libdocker.CreateContainerOptions{
 		Name:     name,
 		Image:    image,
 		HostPort: port,
 		Password: password,
-	})
+	}
+
+	result, err := manager.CreateSSHContainer(ctx, dockerOpts)
 	if err != nil {
 		return nil, err
+	}
+
+	// 保存创建配置到 JSONB 字段，方便后续重建容器
+	configData := map[string]interface{}{
+		"env":            dockerOpts.Env,
+		"ssh_password":   password,
+		"restart_policy": "unless-stopped",
+		"labels": map[string]string{
+			"created_by": "dws-platform",
+			"user_id":    fmt.Sprintf("%d", userID),
+		},
+	}
+	configJSON, err := json.Marshal(configData)
+	if err != nil {
+		return nil, fmt.Errorf("marshal config: %w", err)
 	}
 
 	record := &libdb.Container{
@@ -143,6 +163,7 @@ func (s *ContainerService) CreateWithOptions(ctx context.Context, userID uint, o
 		UserID:      userID,
 		HostSSHPort: port,
 		Status:      "running",
+		Config:      datatypes.JSON(configJSON),
 	}
 
 	if err := repository.Containers.Create(ctx, record); err != nil {
