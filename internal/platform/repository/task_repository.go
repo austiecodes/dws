@@ -75,6 +75,20 @@ func (r *TaskRepository) ListPendingByType(taskType libdb.TaskType, limit int) (
 	return tasks, err
 }
 
+// ListPendingForWorker retrieves pending tasks that target a specific worker.
+func (r *TaskRepository) ListPendingForWorker(workerID string, limit int) ([]libdb.Task, error) {
+	conn := libdb.MustInstance()
+	var tasks []libdb.Task
+	err := conn.
+		Joins("JOIN containers ON containers.id = tasks.container_id").
+		Where("tasks.status = ? AND containers.worker_id = ?", libdb.TaskStatusPending, workerID).
+		Order("tasks.priority DESC, tasks.created_at ASC").
+		Limit(limit).
+		Preload("Container").
+		Find(&tasks).Error
+	return tasks, err
+}
+
 // CountRunningByType returns the count of running tasks for a specific type.
 func (r *TaskRepository) CountRunningByType(taskType libdb.TaskType) (int64, error) {
 	conn := libdb.MustInstance()
@@ -168,6 +182,29 @@ func (r *TaskRepository) UpdateStatus(id uint, status libdb.TaskStatus) error {
 	}
 
 	return conn.Model(&libdb.Task{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// TransitionStatus attempts to change the status from `from` to `to` and returns true if it succeeded.
+func (r *TaskRepository) TransitionStatus(id uint, from, to libdb.TaskStatus) (bool, error) {
+	conn := libdb.MustInstance()
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status":     to,
+		"updated_at": now,
+	}
+
+	if to == libdb.TaskStatusRunning {
+		updates["started_at"] = now
+	}
+
+	if to == libdb.TaskStatusCompleted || to == libdb.TaskStatusFailed || to == libdb.TaskStatusKilled {
+		updates["completed_at"] = now
+	}
+
+	result := conn.Model(&libdb.Task{}).
+		Where("id = ? AND status = ?", id, from).
+		Updates(updates)
+	return result.RowsAffected > 0, result.Error
 }
 
 // UpdateResult updates the output and exit code of a task.

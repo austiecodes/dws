@@ -2,13 +2,15 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
 )
 
-const defaultConfigPath = "configs/app.toml"
+const (
+	defaultPlatformConfigPath    = "configs/platform.toml"
+	platformConfigEnvOverrideKey = "DWS_PLATFORM_CONFIG_PATH"
+)
 
 type ServerConfig struct {
 	Port        int    `toml:"port"`
@@ -47,16 +49,9 @@ type AppConfig struct {
 }
 
 // Load reads the TOML configuration from the provided path. If the path is empty,
-// it falls back to configs/app.toml unless DWS_CONFIG_PATH is set.
+// it falls back to configs/platform.toml unless DWS_PLATFORM_CONFIG_PATH is set.
 func Load(path string) (*AppConfig, error) {
-	configPath := path
-	if configPath == "" {
-		if fromEnv := os.Getenv("DWS_CONFIG_PATH"); fromEnv != "" {
-			configPath = fromEnv
-		} else {
-			configPath = defaultConfigPath
-		}
-	}
+	configPath := resolveConfigPath(path, platformConfigEnvOverrideKey, defaultPlatformConfigPath)
 
 	var cfg AppConfig
 	if _, err := toml.DecodeFile(configPath, &cfg); err != nil {

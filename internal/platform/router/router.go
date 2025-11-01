@@ -62,9 +62,17 @@ func Setup(engine *gin.Engine, cfg *libconfig.AppConfig) error {
 	workers.Use(handlers.RequireAuthMiddleware())
 	workers.GET("", handlers.ListWorkers)
 	workers.GET("/:id", handlers.GetWorker)
-	workers.POST("", handlers.CreateWorker)
-	workers.PUT("/:id", handlers.UpdateWorker)
-	workers.DELETE("/:id", handlers.DeleteWorker)
+
+	workerAdmin := workers.Group("")
+	workerAdmin.Use(handlers.RequireAdminMiddleware())
+	workerAdmin.POST("", handlers.CreateWorker)
+	workerAdmin.PUT("/:id", handlers.UpdateWorker)
+	workerAdmin.DELETE("/:id", handlers.DeleteWorker)
+
+	admin := api.Group("/admin")
+	admin.Use(handlers.RequireAdminMiddleware())
+	admin.GET("/users", handlers.ListUsersAdmin)
+	admin.PATCH("/users/:id", handlers.UpdateUserAdminFlag)
 
 	return nil
 }

@@ -43,6 +43,25 @@ func (r *ContainerRepository) ListHostPorts(ctx context.Context, start, end int)
 	return used, nil
 }
 
+func (r *ContainerRepository) ListHostPortsForWorker(ctx context.Context, workerID string, start, end int) (map[int]struct{}, error) {
+	conn := libdb.MustInstance()
+	var ports []int
+	query := conn.WithContext(ctx).
+		Model(&libdb.Container{}).
+		Where("host_ssh_port BETWEEN ? AND ?", start, end)
+	if workerID != "" {
+		query = query.Where("worker_id = ?", workerID)
+	}
+	if err := query.Pluck("host_ssh_port", &ports).Error; err != nil {
+		return nil, err
+	}
+	used := make(map[int]struct{}, len(ports))
+	for _, port := range ports {
+		used[port] = struct{}{}
+	}
+	return used, nil
+}
+
 func (r *ContainerRepository) UpdateStatus(ctx context.Context, containerID string, status string) error {
 	conn := libdb.MustInstance()
 	return conn.WithContext(ctx).

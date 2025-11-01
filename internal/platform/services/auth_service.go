@@ -70,6 +70,11 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		return nil, ErrEmailExists
 	}
 
+	totalUsers, err := repository.Users.Count(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count users: %w", err)
+	}
+
 	hash, err := libauth.HashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
@@ -81,6 +86,9 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		DisplayName:  displayName,
 		PasswordHash: hash,
 		LastLoginAt:  &now,
+	}
+	if totalUsers == 0 {
+		user.IsAdmin = true
 	}
 
 	if err := repository.Users.Create(ctx, user); err != nil {

@@ -51,6 +51,9 @@ func CreateContainer(c *gin.Context) {
 		case services.ErrNoAvailablePorts:
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no available ssh ports"})
 			return
+		case services.ErrNoOnlineWorker:
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no online worker available"})
+			return
 		case services.ErrServiceNotInitialised:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "container service not initialised"})
 			return

@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/datatypes"
 
+	"github.com/austiecodes/dws/internal/lib/apis/codec"
+	"github.com/austiecodes/dws/internal/lib/apis/workerpb"
 	libconfig "github.com/austiecodes/dws/internal/lib/config"
 	libdb "github.com/austiecodes/dws/internal/lib/db"
 	libdocker "github.com/austiecodes/dws/internal/lib/docker"
@@ -20,6 +25,11 @@ import (
 var (
 	ErrServiceNotInitialised = errors.New("container service not initialised")
 	ErrNoAvailablePorts      = errors.New("no available ssh ports")
+	ErrNoOnlineWorker        = errors.New("no online worker available")
+)
+
+const (
+	workerRPCDialTimeout = 10 * time.Second
 )
 
 type ContainerService struct {
@@ -29,6 +39,7 @@ type ContainerService struct {
 var Containers *ContainerService
 
 func InitContainerService(cfg libconfig.DockerConfig) {
+	codec.Register()
 	Containers = &ContainerService{cfg: cfg}
 }
 
@@ -36,12 +47,12 @@ func (s *ContainerService) List(ctx context.Context, userID uint) ([]libdb.Conta
 	if s == nil {
 		return nil, ErrServiceNotInitialised
 	}
+
 	containers, err := repository.Containers.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// 同步每个容器的状态
 	for i := range containers {
 		_ = s.syncContainerStatus(ctx, &containers[i])
 	}
@@ -50,13 +61,20 @@ func (s *ContainerService) List(ctx context.Context, userID uint) ([]libdb.Conta
 }
 
 func (s *ContainerService) syncContainerStatus(ctx context.Context, container *libdb.Container) error {
-	manager := libdocker.MustInstance()
+	if container.WorkerID != nil && *container.WorkerID != "" {
+		// Remote containers report status through heartbeats; skip direct docker inspection.
+		return nil
+	}
+
+	manager, err := libdocker.Instance()
+	if err != nil {
+		return err
+	}
 	status, err := manager.InspectContainer(ctx, container.ContainerID)
 	if err != nil {
 		return err
 	}
 
-	// 如果状态不一致，更新数据库
 	if container.Status != status.Status {
 		if err := repository.Containers.UpdateStatus(ctx, container.ContainerID, status.Status); err != nil {
 			return err
@@ -77,13 +95,18 @@ func (s *ContainerService) SyncAllContainers(ctx context.Context) error {
 		return err
 	}
 
-	manager := libdocker.MustInstance()
+	manager, err := libdocker.Instance()
+	if err != nil {
+		return err
+	}
 	for i := range containers {
+		if containers[i].WorkerID != nil && *containers[i].WorkerID != "" {
+			continue
+		}
 		status, err := manager.InspectContainer(ctx, containers[i].ContainerID)
 		if err != nil {
-			continue // 跳过错误的容器
+			continue
 		}
-
 		if containers[i].Status != status.Status {
 			_ = repository.Containers.UpdateStatus(ctx, containers[i].ContainerID, status.Status)
 		}
@@ -94,57 +117,66 @@ func (s *ContainerService) SyncAllContainers(ctx context.Context) error {
 
 type CreateContainerOptions struct {
 	Image    string
-	Password string // Optional SSH password, default: "dws"
+	Password string
 }
 
 func (s *ContainerService) Create(ctx context.Context, userID uint, image string) (*libdb.Container, error) {
-	return s.CreateWithOptions(ctx, userID, CreateContainerOptions{
-		Image:    image,
-		Password: "", // Use default password
-	})
+	return s.CreateWithOptions(ctx, userID, CreateContainerOptions{Image: image})
 }
 
 func (s *ContainerService) CreateWithOptions(ctx context.Context, userID uint, opts CreateContainerOptions) (*libdb.Container, error) {
 	if s == nil {
 		return nil, ErrServiceNotInitialised
 	}
+
 	image := strings.TrimSpace(opts.Image)
 	if image == "" {
 		return nil, errors.New("image is required")
 	}
 
-	port, err := s.allocatePort(ctx)
+	worker, err := s.selectWorker(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	manager := libdocker.MustInstance()
-	name := fmt.Sprintf("dws-u%d-%d", userID, time.Now().Unix())
+	port, err := s.allocatePortForWorker(ctx, worker)
+	if err != nil {
+		return nil, err
+	}
 
-	// 如果未指定密码，使用默认值 "dws"
 	password := opts.Password
 	if password == "" {
 		password = "dws"
 	}
 
-	// 构建 Docker 创建参数
-	dockerOpts := libdocker.CreateContainerOptions{
-		Name:     name,
-		Image:    image,
-		HostPort: port,
-		Password: password,
+	name := fmt.Sprintf("dws-u%d-%d", userID, time.Now().Unix())
+
+	client, conn, err := s.dialWorker(ctx, worker)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	req := &workerpb.ContainerSpec{
+		Image:         image,
+		Password:      password,
+		Name:          name,
+		UserID:        uint64(userID),
+		HostSSHPort:   int32(port),
+		ContainerUUID: uuid.NewString(),
 	}
 
-	result, err := manager.CreateSSHContainer(ctx, dockerOpts)
+	rpcCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+	defer cancel()
+
+	resp, err := client.CreateContainer(rpcCtx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	// 保存创建配置到 JSONB 字段，方便后续重建容器
 	configData := map[string]interface{}{
-		"env":            dockerOpts.Env,
-		"ssh_password":   password,
-		"restart_policy": "unless-stopped",
+		"ssh_password": password,
+		"worker_id":    worker.ID,
 		"labels": map[string]string{
 			"created_by": "dws-platform",
 			"user_id":    fmt.Sprintf("%d", userID),
@@ -155,27 +187,35 @@ func (s *ContainerService) CreateWithOptions(ctx context.Context, userID uint, o
 		return nil, fmt.Errorf("marshal config: %w", err)
 	}
 
+	workerID := worker.ID
 	record := &libdb.Container{
-		UUID:        uuid.NewString(),
-		ContainerID: result.ID,
+		UUID:        req.ContainerUUID,
+		ContainerID: resp.ContainerID,
 		Name:        name,
 		Image:       image,
 		UserID:      userID,
-		HostSSHPort: port,
-		Status:      "running",
+		WorkerID:    &workerID,
+		HostSSHPort: int(resp.HostSSHPort),
+		Status:      resp.Status,
 		Config:      datatypes.JSON(configJSON),
 	}
 
 	if err := repository.Containers.Create(ctx, record); err != nil {
-		_ = manager.RemoveContainer(ctx, result.ID)
+		delCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+		defer cancel()
+		_, _ = client.DeleteContainer(delCtx, &workerpb.ContainerRequest{ContainerID: resp.ContainerID, ContainerUUID: req.ContainerUUID})
 		return nil, err
 	}
 
 	return record, nil
 }
 
-func (s *ContainerService) allocatePort(ctx context.Context) (int, error) {
-	used, err := repository.Containers.ListHostPorts(ctx, s.cfg.SSHPortRangeStart, s.cfg.SSHPortRangeEnd)
+func (s *ContainerService) allocatePortForWorker(ctx context.Context, worker *libdb.Worker) (int, error) {
+	workerID := ""
+	if worker != nil {
+		workerID = worker.ID
+	}
+	used, err := repository.Containers.ListHostPortsForWorker(ctx, workerID, s.cfg.SSHPortRangeStart, s.cfg.SSHPortRangeEnd)
 	if err != nil {
 		return 0, fmt.Errorf("list used ports: %w", err)
 	}
@@ -184,11 +224,12 @@ func (s *ContainerService) allocatePort(ctx context.Context) (int, error) {
 		if _, ok := used[port]; ok {
 			continue
 		}
-		if !libdocker.IsPortFree(port) {
+		if workerID == "" && !libdocker.IsPortFree(port) {
 			continue
 		}
 		return port, nil
 	}
+
 	return 0, ErrNoAvailablePorts
 }
 
@@ -196,106 +237,207 @@ func (s *ContainerService) AllowedImages(ctx context.Context) ([]string, error) 
 	if s == nil {
 		return nil, ErrServiceNotInitialised
 	}
+	if len(s.cfg.AllowedImages) > 0 {
+		return s.cfg.AllowedImages, nil
+	}
 	manager := libdocker.MustInstance()
 	return manager.ListImages(ctx)
 }
 
 func (s *ContainerService) Stop(ctx context.Context, userID uint, uuid string) error {
-	if s == nil {
-		return ErrServiceNotInitialised
-	}
-
-	// 获取容器并验证所有权
-	container, err := repository.Containers.GetByUUID(ctx, uuid)
+	container, worker, err := s.loadUserContainer(ctx, userID, uuid)
 	if err != nil {
-		return fmt.Errorf("get container: %w", err)
-	}
-	if container.UserID != userID {
-		return errors.New("permission denied")
+		return err
 	}
 
-	// 停止容器
-	manager := libdocker.MustInstance()
-	if err := manager.StopContainer(ctx, container.ContainerID); err != nil {
-		return fmt.Errorf("stop container: %w", err)
+	status := "stopped"
+	if worker == nil {
+		manager, err := libdocker.Instance()
+		if err != nil {
+			return err
+		}
+		if err := manager.StopContainer(ctx, container.ContainerID); err != nil {
+			return fmt.Errorf("stop container: %w", err)
+		}
+	} else {
+		client, conn, err := s.dialWorker(ctx, worker)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		rpcCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+		defer cancel()
+		resp, err := client.StopContainer(rpcCtx, &workerpb.ContainerRequest{ContainerID: container.ContainerID, ContainerUUID: container.UUID})
+		if err != nil {
+			return err
+		}
+		if resp != nil && resp.Status != "" {
+			status = resp.Status
+		}
 	}
 
-	// 更新状态
-	if err := repository.Containers.UpdateStatus(ctx, container.ContainerID, "stopped"); err != nil {
-		return fmt.Errorf("update status: %w", err)
-	}
-
-	return nil
+	return repository.Containers.UpdateStatus(ctx, container.ContainerID, status)
 }
 
 func (s *ContainerService) Start(ctx context.Context, userID uint, uuid string) error {
-	if s == nil {
-		return ErrServiceNotInitialised
-	}
-
-	// 获取容器并验证所有权
-	container, err := repository.Containers.GetByUUID(ctx, uuid)
+	container, worker, err := s.loadUserContainer(ctx, userID, uuid)
 	if err != nil {
-		return fmt.Errorf("get container: %w", err)
-	}
-	if container.UserID != userID {
-		return errors.New("permission denied")
+		return err
 	}
 
-	// 启动容器
-	manager := libdocker.MustInstance()
-	if err := manager.StartContainer(ctx, container.ContainerID); err != nil {
-		return fmt.Errorf("start container: %w", err)
+	status := "running"
+	if worker == nil {
+		manager, err := libdocker.Instance()
+		if err != nil {
+			return err
+		}
+		if err := manager.StartContainer(ctx, container.ContainerID); err != nil {
+			return fmt.Errorf("start container: %w", err)
+		}
+	} else {
+		client, conn, err := s.dialWorker(ctx, worker)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		rpcCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+		defer cancel()
+		resp, err := client.StartContainer(rpcCtx, &workerpb.ContainerRequest{ContainerID: container.ContainerID, ContainerUUID: container.UUID})
+		if err != nil {
+			return err
+		}
+		if resp != nil && resp.Status != "" {
+			status = resp.Status
+		}
 	}
 
-	// 更新状态
-	if err := repository.Containers.UpdateStatus(ctx, container.ContainerID, "running"); err != nil {
-		return fmt.Errorf("update status: %w", err)
-	}
-
-	return nil
+	return repository.Containers.UpdateStatus(ctx, container.ContainerID, status)
 }
 
 func (s *ContainerService) Delete(ctx context.Context, userID uint, uuid string) error {
-	if s == nil {
-		return ErrServiceNotInitialised
-	}
-
-	// 获取容器并验证所有权
-	container, err := repository.Containers.GetByUUID(ctx, uuid)
+	container, worker, err := s.loadUserContainer(ctx, userID, uuid)
 	if err != nil {
-		return fmt.Errorf("get container: %w", err)
-	}
-	if container.UserID != userID {
-		return errors.New("permission denied")
+		return err
 	}
 
-	// 开启事务
 	conn := libdb.MustInstance()
 	tx := conn.WithContext(ctx).Begin()
 	if tx.Error != nil {
 		return fmt.Errorf("begin transaction: %w", tx.Error)
 	}
 
-	// 删除 Docker 容器
-	manager := libdocker.MustInstance()
-	if err := manager.RemoveContainer(ctx, container.ContainerID); err != nil {
+	rollback := func(cause error) error {
 		tx.Rollback()
-		return fmt.Errorf("remove container: %w", err)
+		return cause
 	}
 
-	// 软删除数据库记录
+	if worker == nil {
+		manager, err := libdocker.Instance()
+		if err != nil {
+			return rollback(err)
+		}
+		if err := manager.RemoveContainer(ctx, container.ContainerID); err != nil {
+			return rollback(fmt.Errorf("remove container: %w", err))
+		}
+	} else {
+		client, conn, err := s.dialWorker(ctx, worker)
+		if err != nil {
+			return rollback(err)
+		}
+		defer conn.Close()
+		rpcCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+		defer cancel()
+		if _, err := client.DeleteContainer(rpcCtx, &workerpb.ContainerRequest{ContainerID: container.ContainerID, ContainerUUID: container.UUID}); err != nil {
+			return rollback(err)
+		}
+	}
+
 	if err := tx.Model(&libdb.Container{}).
 		Where("uuid = ?", uuid).
 		Update("is_deleted", true).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("soft delete from db: %w", err)
+		return rollback(fmt.Errorf("soft delete from db: %w", err))
 	}
 
-	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
+}
+
+func (s *ContainerService) loadUserContainer(ctx context.Context, userID uint, uuid string) (*libdb.Container, *libdb.Worker, error) {
+	if uuid == "" {
+		return nil, nil, errors.New("uuid is required")
+	}
+
+	container, err := repository.Containers.GetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get container: %w", err)
+	}
+	if container.UserID != userID {
+		return nil, nil, errors.New("permission denied")
+	}
+
+	var worker *libdb.Worker
+	if container.WorkerID != nil && *container.WorkerID != "" {
+		worker, err = repository.Workers.GetByID(*container.WorkerID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if worker == nil {
+			return nil, nil, fmt.Errorf("worker %s not found", *container.WorkerID)
+		}
+	}
+
+	return container, worker, nil
+}
+
+func (s *ContainerService) selectWorker(ctx context.Context) (*libdb.Worker, error) {
+	workers, err := repository.Workers.List()
+	if err != nil {
+		return nil, err
+	}
+
+	var selected *libdb.Worker
+	var minContainers int64 = 1<<63 - 1
+	for i := range workers {
+		worker := workers[i]
+		if worker.Status != libdb.WorkerStatusOnline {
+			continue
+		}
+		count, err := repository.Workers.CountContainers(worker.ID)
+		if err != nil {
+			log.Printf("[platform] count containers for worker %s: %v", worker.ID, err)
+			continue
+		}
+		if selected == nil || count < minContainers {
+			copy := worker
+			selected = &copy
+			minContainers = count
+		}
+	}
+
+	if selected == nil {
+		return nil, ErrNoOnlineWorker
+	}
+	return selected, nil
+}
+
+func (s *ContainerService) dialWorker(ctx context.Context, worker *libdb.Worker) (workerpb.WorkerControlServiceClient, *grpc.ClientConn, error) {
+	if worker == nil || worker.Address == "" {
+		return nil, nil, errors.New("worker address not configured")
+	}
+
+	dialCtx, cancel := context.WithTimeout(ctx, workerRPCDialTimeout)
+	defer cancel()
+
+	conn, err := grpc.DialContext(dialCtx, worker.Address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.CallContentSubtype(codec.JSONCodecName)))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return workerpb.NewWorkerControlServiceClient(conn), conn, nil
 }

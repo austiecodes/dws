@@ -24,15 +24,17 @@ type UpdateWorkerRequest struct {
 
 // WorkerResponse represents a worker in API responses.
 type WorkerResponse struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Address       string                 `json:"address"`
-	Status        string                 `json:"status"`
-	LastHeartbeat *time.Time             `json:"last_heartbeat,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
-	ContainerCount int64                 `json:"container_count,omitempty"`
+	ID             string                 `json:"id"`
+	Name           string                 `json:"name"`
+	Address        string                 `json:"address"`
+	Status         string                 `json:"status"`
+	IsOnline       bool                   `json:"is_online"`
+	LastHeartbeat  *time.Time             `json:"last_heartbeat,omitempty"`
+	LeaseExpiresAt *time.Time             `json:"lease_expires_at,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
+	ContainerCount int64                  `json:"container_count,omitempty"`
 }
 
 // NewWorkerResponse creates a WorkerResponse from a Worker model.
@@ -42,15 +44,27 @@ func NewWorkerResponse(worker *libdb.Worker) WorkerResponse {
 		_ = worker.Metadata.UnmarshalJSON(worker.Metadata)
 	}
 
+	isOnline := false
+	if worker.LeaseExpiresAt != nil && time.Now().Before(*worker.LeaseExpiresAt) && worker.Status != libdb.WorkerStatusMaintenance {
+		isOnline = true
+	}
+
+	status := worker.Status
+	if !isOnline && status == libdb.WorkerStatusOnline {
+		status = libdb.WorkerStatusOffline
+	}
+
 	return WorkerResponse{
-		ID:            worker.ID,
-		Name:          worker.Name,
-		Address:       worker.Address,
-		Status:        string(worker.Status),
-		LastHeartbeat: worker.LastHeartbeat,
-		Metadata:      metadata,
-		CreatedAt:     worker.CreatedAt,
-		UpdatedAt:     worker.UpdatedAt,
+		ID:             worker.ID,
+		Name:           worker.Name,
+		Address:        worker.Address,
+		Status:         string(status),
+		IsOnline:       isOnline,
+		LastHeartbeat:  worker.LastHeartbeat,
+		LeaseExpiresAt: worker.LeaseExpiresAt,
+		Metadata:       metadata,
+		CreatedAt:      worker.CreatedAt,
+		UpdatedAt:      worker.UpdatedAt,
 	}
 }
 
@@ -62,4 +76,3 @@ func NewWorkerListResponse(workers []libdb.Worker) []WorkerResponse {
 	}
 	return responses
 }
-

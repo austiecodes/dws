@@ -10,7 +10,7 @@ import (
 )
 
 func CreateWorker(c *gin.Context) {
-	userID, ok := requireUser(c)
+	adminUser, ok := requireAdminUser(c)
 	if !ok {
 		return
 	}
@@ -23,7 +23,7 @@ func CreateWorker(c *gin.Context) {
 
 	worker, err := services.WorkersService.Create(
 		c.Request.Context(),
-		userID,
+		adminUser.ID,
 		req.ID,
 		req.Name,
 		req.Address,
@@ -106,7 +106,7 @@ func GetWorker(c *gin.Context) {
 }
 
 func UpdateWorker(c *gin.Context) {
-	userID, ok := requireUser(c)
+	adminUser, ok := requireAdminUser(c)
 	if !ok {
 		return
 	}
@@ -142,7 +142,7 @@ func UpdateWorker(c *gin.Context) {
 		return
 	}
 
-	if err := services.WorkersService.Update(c.Request.Context(), userID, id, updates); err != nil {
+	if err := services.WorkersService.Update(c.Request.Context(), adminUser.ID, id, updates); err != nil {
 		switch err {
 		case services.ErrNotAdmin:
 			c.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
@@ -160,7 +160,7 @@ func UpdateWorker(c *gin.Context) {
 }
 
 func DeleteWorker(c *gin.Context) {
-	userID, ok := requireUser(c)
+	adminUser, ok := requireAdminUser(c)
 	if !ok {
 		return
 	}
@@ -171,7 +171,7 @@ func DeleteWorker(c *gin.Context) {
 		return
 	}
 
-	if err := services.WorkersService.Delete(c.Request.Context(), userID, id); err != nil {
+	if err := services.WorkersService.Delete(c.Request.Context(), adminUser.ID, id); err != nil {
 		switch err {
 		case services.ErrNotAdmin:
 			c.JSON(http.StatusForbidden, gin.H{"error": "admin permission required"})
@@ -190,4 +190,3 @@ func DeleteWorker(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "worker deleted"})
 }
-

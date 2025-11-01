@@ -9,6 +9,7 @@
 ### ✅ 已实现
 
 - **用户系统**: 注册、登录、会话管理
+- **管理员角色**: 首个注册用户自动成为管理员，可通过 Admin API 升/降级其他用户
 - **容器管理**: 创建、启动、停止、删除 Docker 容器（支持 SSH 访问）
 - **任务调度**: 
   - 用户提交任务到容器执行
@@ -58,21 +59,19 @@ psql -h localhost -p 5432 -U dws -d dws
 
 ### 3. 配置应用
 
-```bash
-cp configs/app.example.toml configs/app.toml
-# 编辑 app.toml 配置数据库连接等
-```
+编辑 `configs/platform.toml`、`configs/scheduler.toml`、`configs/worker.toml`，按需填写数据库、Docker 以及节点信息。注意 `session_key` 可以任意长度，但 `aes_key` 必须是 16/24/32 个字符，否则会导致 "failed to persist session"。
 
 ### 4. 启动后端服务
 
 ```bash
-# 终端 1: Platform API
+# 终端 1: Platform API (默认读取 configs/platform.toml，可用 DWS_PLATFORM_CONFIG_PATH 覆盖)
 go run ./cmd/platform/main.go
 
-# 终端 2: Scheduler
+# 终端 2: Scheduler (默认读取 configs/scheduler.toml，可用 DWS_SCHEDULER_CONFIG_PATH 覆盖)
 go run ./cmd/scheduler/main.go
 
-# 终端 3: Worker
+# 终端 3: Worker (默认读取 configs/worker.toml，可用 DWS_WORKER_CONFIG_PATH 覆盖)
+#         启动前请在 workers 表中插入对应的 worker.id 等信息
 go run ./cmd/worker/main.go
 ```
 
