@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dws.api.v1;
+
+option go_package = "github.com/austiecodes/dws/internal/lib/apis/workerpb";
+
+message ContainerSpec {
+  string image = 1;
+  string password = 2;
+  string name = 3;
+  uint64 user_id = 4;
+  map<string, string> labels = 5;
+  int32 host_ssh_port = 6;
+  string container_uuid = 7;
+}
+
+message ContainerInfo {
+  string container_id = 1;
+  string status = 2;
+  int32 host_ssh_port = 3;
+  string message = 4;
+}
+
+message ContainerRequest {
+  string container_id = 1;
+  string container_uuid = 2;
+}
+
+message ExecCommandRequest {
+  string container_id = 1;
+  repeated string command = 2;
+}
+
+message ExecCommandResponse {
+  int32 exit_code = 1;
+  string output = 2;
+  string error = 3;
+}
+
+service WorkerControlService {
+  rpc CreateContainer(ContainerSpec) returns (ContainerInfo);
+  rpc StartContainer(ContainerRequest) returns (ContainerInfo);
+  rpc StopContainer(ContainerRequest) returns (ContainerInfo);
+  rpc DeleteContainer(ContainerRequest) returns (ContainerInfo);
+  rpc ExecCommand(ExecCommandRequest) returns (ExecCommandResponse);
+}

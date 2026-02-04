@@ -1,0 +1,30 @@
+[database]
+host = "127.0.0.1"
+port = 5432
+user = "admin"
+password = "123456"
+name = "postgres"
+ssl_mode = "disable"
+max_idle_conns = 5
+max_open_conns = 20
+conn_max_lifetime = "30m"
+conn_max_idle_time = "10m"
+
+[docker]
+host = "unix:///var/run/docker.sock"
+api_version = ""
+ssh_port_range_start = 22000
+ssh_port_range_end = 22999
+allowed_images = ["ubuntu:22.04", "nvidia/cuda:12.4.1-base-ubuntu22.04"]
+network = ""
+
+[worker]
+id = "worker-1"
+name = "local-worker"
+address = "127.0.0.1:7002"
+max_tasks = 2
+heartbeat_ttl_secs = 30
+
+[worker.rpc]
+listen_addr = "0.0.0.0:7002"
+scheduler_addr = "127.0.0.1:7001"

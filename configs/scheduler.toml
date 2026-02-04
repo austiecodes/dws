@@ -1,0 +1,15 @@
+[database]
+host = "127.0.0.1"
+port = 5432
+user = "admin"
+password = "123456"
+name = "postgres"
+ssl_mode = "disable"
+max_idle_conns = 5
+max_open_conns = 20
+conn_max_lifetime = "30m"
+conn_max_idle_time = "10m"
+# Default lease duration in seconds if worker does not specify ttl.
+heartbeat_ttl_secs = 30
+[rpc]
+listen_addr = "0.0.0.0:7001"
